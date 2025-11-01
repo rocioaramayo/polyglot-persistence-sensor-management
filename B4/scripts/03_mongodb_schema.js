@@ -5,8 +5,14 @@
 // mensajería, gestión de alertas y entidades con parámetros dinámicos
 
 // Script para mongosh: asumir que ya estas en la DB polyglot_mongodb (variable global db disponible)
+// Helper para crear colecciones sin fallar si existen
+function createColl(name, options) {
+  try {
+    if (options) db.createCollection(name, options); else db.createCollection(name);
+  } catch (e) { /* probablemente ya existe */ }
+}
 
-    db.createCollection("usuarios", {
+    createColl("usuarios", {
       validator: {
         $jsonSchema: {
           bsonType: "object",
@@ -31,7 +37,7 @@
       },
     })
 
-    db.createCollection("roles", {
+    createColl("roles", {
       validator: {
         $jsonSchema: {
           bsonType: "object",
@@ -50,7 +56,7 @@
       },
     })
 
-    db.createCollection("procesos", {
+    createColl("procesos", {
       validator: {
         $jsonSchema: {
           bsonType: "object",
@@ -77,7 +83,7 @@
     })
 
     // Colección de Solicitudes de Proceso
-    db.createCollection("solicitudes_proceso", {
+    createColl("solicitudes_proceso", {
       validator: {
         $jsonSchema: {
           bsonType: "object",
@@ -107,7 +113,7 @@
     })
 
     // Colección de Mensajes
-    db.createCollection("mensajes", {
+    createColl("mensajes", {
       validator: {
         $jsonSchema: {
           bsonType: "object",
@@ -131,7 +137,7 @@
       },
     })
 
-    db.createCollection("grupos", {
+    createColl("grupos", {
       validator: {
         $jsonSchema: {
           bsonType: "object",
@@ -153,7 +159,7 @@
     })
 
     // Colección de Alertas
-    db.createCollection("alertas", {
+    createColl("alertas", {
       validator: {
         $jsonSchema: {
           bsonType: "object",
@@ -186,7 +192,7 @@
     })
 
     // Colección de Control de Sensores
-    db.createCollection("control_sensores", {
+    createColl("control_sensores", {
       validator: {
         $jsonSchema: {
           bsonType: "object",
