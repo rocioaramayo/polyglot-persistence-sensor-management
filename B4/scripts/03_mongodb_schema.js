@@ -272,7 +272,8 @@ async function main() {
     db.usuarios.insertOne({
       nombre: "Administrador del Sistema",
       email: "admin@polyglot.com",
-      password: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy", // password: admin123
+      // Hash SHA-256 de "admin123" para compatibilidad con AuthService.hashPassword
+      password: "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
       rol: "ADMINISTRADOR",
       fecha_registro: new Date(),
       activo: true,
