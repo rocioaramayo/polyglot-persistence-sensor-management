@@ -4,17 +4,7 @@
 // Justificación: Flexibilidad de esquema para estructuras variables, ideal para
 // mensajería, gestión de alertas y entidades con parámetros dinámicos
 
-// Importar la biblioteca MongoDB
-const { MongoClient } = require("mongodb")
-
-// Conectar a MongoDB
-async function main() {
-  const uri = "your_mongodb_connection_string" // Replace with your MongoDB connection string
-  const client = new MongoClient(uri)
-
-  try {
-    await client.connect()
-    const db = client.db("polyglot_mongodb")
+// Script para mongosh: asumir que ya estas en la DB polyglot_mongodb (variable global db disponible)
 
     db.createCollection("usuarios", {
       validator: {
@@ -283,12 +273,4 @@ async function main() {
       direccion: "Oficina Central",
     })
 
-    console.log(
-      "MongoDB schema creado exitosamente con todas las colecciones, roles predefinidos y administrador por defecto",
-    )
-  } finally {
-    await client.close()
-  }
-}
-
-main().catch(console.error)
+    print("MongoDB schema creado: colecciones, roles y admin por defecto")
