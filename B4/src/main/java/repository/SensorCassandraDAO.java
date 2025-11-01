@@ -28,11 +28,11 @@ public class SensorCassandraDAO {
             String id = UUID.randomUUID().toString();
             sensor.setId(id);
 
-            String cql = "INSERT INTO sensores_by_id (id, nombre, tipo, latitud, longitud, ciudad, pais, estado, fecha_inicio) " +
+            String cql = "INSERT INTO sensores (id, nombre, tipo_sensor, latitud, longitud, ciudad, pais, estado, fecha_inicio_emision) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, toTimestamp(now()))";
 
-            session.execute(cql, id, sensor.getNombre(), sensor.getTipo(), 
-                    sensor.getLatitud(), sensor.getLongitud(), sensor.getCiudad(), 
+            session.execute(cql, id, sensor.getNombre(), sensor.getTipo(),
+                    sensor.getLatitud(), sensor.getLongitud(), sensor.getCiudad(),
                     sensor.getPais(), sensor.getEstado());
         } catch (Exception e) {
             throw new ErrorConexionCassandraException("Error al crear sensor", e);
@@ -42,7 +42,7 @@ public class SensorCassandraDAO {
     public Sensor obtenerPorId(String id) throws ErrorConexionCassandraException {
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
-            String cql = "SELECT * FROM sensores_by_id WHERE id = ?";
+            String cql = "SELECT * FROM sensores WHERE id = ?";
             ResultSet rs = session.execute(cql, id);
             Row row = rs.one();
             if (row != null) {
@@ -58,7 +58,7 @@ public class SensorCassandraDAO {
         List<Sensor> sensores = new ArrayList<>();
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
-            String cql = "SELECT * FROM sensores_by_id WHERE ciudad = ? ALLOW FILTERING";
+            String cql = "SELECT * FROM sensores WHERE ciudad = ? ALLOW FILTERING";
             ResultSet rs = session.execute(cql, ciudad);
             for (Row row : rs) {
                 sensores.add(mapearSensor(row));
@@ -73,7 +73,7 @@ public class SensorCassandraDAO {
         List<Sensor> sensores = new ArrayList<>();
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
-            String cql = "SELECT * FROM sensores_by_id";
+            String cql = "SELECT * FROM sensores";
             ResultSet rs = session.execute(cql);
             for (Row row : rs) {
                 sensores.add(mapearSensor(row));
@@ -88,7 +88,8 @@ public class SensorCassandraDAO {
         Sensor sensor = new Sensor();
         sensor.setId(row.getString("id"));
         sensor.setNombre(row.getString("nombre"));
-        sensor.setTipo(row.getString("tipo"));
+        // El esquema usa columna tipo_sensor
+        sensor.setTipo(row.getString("tipo_sensor"));
         sensor.setLatitud(row.getDouble("latitud"));
         sensor.setLongitud(row.getDouble("longitud"));
         sensor.setCiudad(row.getString("ciudad"));
@@ -100,7 +101,7 @@ public class SensorCassandraDAO {
     public void actualizarEstado(String id, String nuevoEstado) throws ErrorConexionCassandraException {
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
-            String cql = "UPDATE sensores_by_id SET estado = ? WHERE id = ?";
+            String cql = "UPDATE sensores SET estado = ? WHERE id = ?";
             session.execute(cql, nuevoEstado, id);
         } catch (Exception e) {
             throw new ErrorConexionCassandraException("Error al actualizar estado del sensor", e);

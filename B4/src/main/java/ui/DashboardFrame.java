@@ -51,7 +51,7 @@ public class DashboardFrame extends JFrame {
         }
 
         tabbedPane = new JTabbedPane();
-        tabbedPane.addTab("Sensores", crearPanelSensores());
+        // La gestión de sensores se realiza solo en AdminFrame
         tabbedPane.addTab("Procesos", crearPanelProcesos());
     tabbedPane.addTab("Solicitudes", crearPanelSolicitudes());
     tabbedPane.addTab("Alertas", crearPanelAlertas());
