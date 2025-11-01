@@ -300,6 +300,19 @@ public class DashboardFrame extends JFrame {
         JList<DestinatarioItem> miembrosList = new JList<>(miembrosModel);
         miembrosList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         miembrosList.setVisibleRowCount(8);
+        // Toggle de selección por clic (sin necesidad de Ctrl)
+        miembrosList.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override public void mousePressed(java.awt.event.MouseEvent e) {
+                int idx = miembrosList.locationToIndex(e.getPoint());
+                if (idx >= 0) {
+                    if (miembrosList.isSelectedIndex(idx)) {
+                        miembrosList.removeSelectionInterval(idx, idx);
+                    } else {
+                        miembrosList.addSelectionInterval(idx, idx);
+                    }
+                }
+            }
+        });
 
         gbc.gridx = 0;
         gbc.gridy = 0;
