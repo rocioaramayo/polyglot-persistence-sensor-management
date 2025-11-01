@@ -30,7 +30,9 @@ public class UsuarioMongoDAO {
                 .append("password", usuario.getPasswordHash())
                 .append("rol", usuario.getRol())
                 .append("activo", usuario.getActivo())
-                .append("fecha_registro", Date.from(usuario.getFechaRegistro().atZone(ZoneId.systemDefault()).toInstant()));
+                .append("fecha_registro", Date.from(usuario.getFechaRegistro().atZone(ZoneId.systemDefault()).toInstant()))
+                .append("telefono", usuario.getTelefono())
+                .append("direccion", usuario.getDireccion());
         
         collection.insertOne(doc);
         return doc.getObjectId("_id").toString();
@@ -50,6 +52,8 @@ public class UsuarioMongoDAO {
         usuario.setActivo(doc.getBoolean("activo"));
         usuario.setFechaRegistro(doc.getDate("fecha_registro").toInstant()
                 .atZone(ZoneId.systemDefault()).toLocalDateTime());
+        usuario.setTelefono(doc.getString("telefono"));
+        usuario.setDireccion(doc.getString("direccion"));
         return usuario;
     }
 
@@ -67,6 +71,8 @@ public class UsuarioMongoDAO {
         usuario.setActivo(doc.getBoolean("activo"));
         usuario.setFechaRegistro(doc.getDate("fecha_registro").toInstant()
                 .atZone(ZoneId.systemDefault()).toLocalDateTime());
+        usuario.setTelefono(doc.getString("telefono"));
+        usuario.setDireccion(doc.getString("direccion"));
         return usuario;
     }
 

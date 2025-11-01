@@ -24,6 +24,7 @@ async function main() {
           properties: {
             _id: { bsonType: "objectId" },
             nombre: { bsonType: "string", description: "Nombre completo del usuario" },
+            apellido: { bsonType: "string", description: "Apellido del usuario" },
             email: { bsonType: "string", pattern: "^.+@.+$", description: "Email único del usuario" },
             password: { bsonType: "string", description: "Contraseña encriptada" },
             rol: {
@@ -271,6 +272,7 @@ async function main() {
 
     db.usuarios.insertOne({
       nombre: "Administrador del Sistema",
+      apellido: "Del Sistema",
       email: "admin@polyglot.com",
       // Hash SHA-256 de "admin123" para compatibilidad con AuthService.hashPassword
       password: "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
