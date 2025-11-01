@@ -4,6 +4,12 @@
 -- Justificación: Escritura masiva y escalabilidad horizontal. Diseñada para series 
 -- de tiempo y alto volumen de ingesta de mediciones. Almacena eficientemente el 
 -- histórico de ejecución de procesos.
+USE polyglot_ks;
+ALTER TABLE mediciones DROP presion;
+ALTER TABLE mediciones DROP velocidad_viento;
+ALTER TABLE mediciones DROP direccion_viento;
+ALTER TABLE mediciones DROP precipitacion;
+ALTER TABLE mediciones DROP calidad_lectura;
 
 CREATE KEYSPACE IF NOT EXISTS polyglot_ks 
 WITH replication = {
@@ -44,11 +50,6 @@ CREATE TABLE IF NOT EXISTS mediciones (
     id TEXT,
     temperatura DOUBLE,
     humedad DOUBLE,
-    presion DOUBLE,
-    velocidad_viento DOUBLE,
-    direccion_viento TEXT,
-    precipitacion DOUBLE,
-    calidad_lectura TEXT,
     PRIMARY KEY (sensor_id, fecha)
 ) WITH CLUSTERING ORDER BY (fecha DESC)
   AND compaction = {'class': 'TimeWindowCompactionStrategy', 'compaction_window_size': 1, 'compaction_window_unit': 'DAYS'}

@@ -43,9 +43,19 @@ public class AutoMedicionService {
         try {
             List<Sensor> sensores = SensorCassandraDAO.getInstance().listarTodos();
             for (Sensor s : sensores) {
-                // Generar siempre, independientemente del estado: simulación continua
-                double t = 15 + rnd.nextDouble() * 30; // 15-45°C
-                double h = 30 + rnd.nextDouble() * 60; // 30-90%
+                // Simular según tipo de sensor; otros campos quedan en null
+                String tipo = s.getTipo() != null ? s.getTipo().toLowerCase() : "temperatura";
+                Double t = null;
+                Double h = null;
+                if ("temperatura".equals(tipo)) {
+                    t = 15 + rnd.nextDouble() * 30; // 15-45°C
+                } else if ("humedad".equals(tipo)) {
+                    h = 30 + rnd.nextDouble() * 60; // 30-90%
+                } else {
+                    // Tipo desconocido: generar ambas para no dejar vacío
+                    t = 15 + rnd.nextDouble() * 30;
+                    h = 30 + rnd.nextDouble() * 60;
+                }
                 MedicionService.getInstance().registrarMedicion(s.getId(), t, h);
             }
         } catch (ErrorConexionCassandraException ignored) {
@@ -54,4 +64,3 @@ public class AutoMedicionService {
         }
     }
 }
-
