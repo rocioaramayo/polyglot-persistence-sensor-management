@@ -296,7 +296,10 @@ public class DashboardFrame extends JFrame {
 
         JTextField nombreField = new JTextField(24);
         JTextField descripcionField = new JTextField(24);
-        JTextField miembrosField = new JTextField(24);
+        DefaultListModel<DestinatarioItem> miembrosModel = new DefaultListModel<>();
+        JList<DestinatarioItem> miembrosList = new JList<>(miembrosModel);
+        miembrosList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        miembrosList.setVisibleRowCount(8);
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -316,10 +319,12 @@ public class DashboardFrame extends JFrame {
 
         gbc.gridx = 0;
         gbc.gridy = 2;
-        form.add(new JLabel("Miembros (IDs separados por coma):"), gbc);
+        form.add(new JLabel("Miembros (seleccione):"), gbc);
         gbc.gridx = 1;
         gbc.weightx = 1.0;
-        form.add(miembrosField, gbc);
+        JScrollPane miembrosScroll = new JScrollPane(miembrosList);
+        miembrosScroll.setPreferredSize(new Dimension(220, 120));
+        form.add(miembrosScroll, gbc);
         gbc.weightx = 0.0;
 
         gbc.gridx = 0;
@@ -331,7 +336,12 @@ public class DashboardFrame extends JFrame {
         form.add(crearGrupoButton, gbc);
 
         crearGrupoButton.addActionListener(e -> {
-            List<String> miembros = parsearMiembros(miembrosField.getText());
+            List<String> miembros = new ArrayList<>();
+            for (DestinatarioItem it : miembrosList.getSelectedValuesList()) {
+                if (it != null && it.getId() != null && !it.getId().isBlank()) {
+                    if (!miembros.contains(it.getId())) miembros.add(it.getId());
+                }
+            }
             if (!miembros.contains(usuarioActual.getId())) {
                 miembros.add(usuarioActual.getId());
             }
@@ -344,7 +354,7 @@ public class DashboardFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Grupo creado correctamente", "Éxito", JOptionPane.INFORMATION_MESSAGE);
                 nombreField.setText("");
                 descripcionField.setText("");
-                miembrosField.setText("");
+                miembrosList.clearSelection();
                 cargarCatalogosMensajeria();
             } catch (IllegalArgumentException iae) {
                 JOptionPane.showMessageDialog(this, iae.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
@@ -354,6 +364,34 @@ public class DashboardFrame extends JFrame {
         });
 
         panel.add(form, BorderLayout.SOUTH);
+        // Cargar usuarios activos para el selector de miembros
+        try {
+            List<Usuario> usuarios = UsuarioService.getInstance().listarUsuariosActivos();
+            miembrosModel.clear();
+            int selfIndex = -1;
+            int idx = 0;
+            for (Usuario u : usuarios) {
+                String label = (u.getNombreCompleto() != null && !u.getNombreCompleto().isBlank()) ? u.getNombreCompleto() : u.getEmail();
+                if (label == null || label.isBlank()) label = "Usuario " + u.getId();
+                if (usuarioActual != null && u.getId() != null && u.getId().equals(usuarioActual.getId())) {
+                    label = "Yo - " + label;
+                    selfIndex = idx;
+                }
+                miembrosModel.addElement(new DestinatarioItem(u.getId(), label));
+                idx++;
+            }
+            if (selfIndex == -1 && usuarioActual != null) {
+                String base = (usuarioActual.getNombreCompleto() != null && !usuarioActual.getNombreCompleto().isBlank()) ? usuarioActual.getNombreCompleto() : usuarioActual.getEmail();
+                if (base == null || base.isBlank()) base = "Usuario " + usuarioActual.getId();
+                miembrosModel.add(0, new DestinatarioItem(usuarioActual.getId(), "Yo - " + base));
+                selfIndex = 0;
+            }
+            if (selfIndex >= 0) {
+                miembrosList.setSelectedIndex(selfIndex);
+            }
+        } catch (ErrorConexionMongoException ex) {
+            // ignoramos carga fallida
+        }
         return panel;
     }
 
