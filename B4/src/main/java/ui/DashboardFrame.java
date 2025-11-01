@@ -294,27 +294,33 @@ public class DashboardFrame extends JFrame {
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        JTextField nombreField = new JTextField();
-        JTextField descripcionField = new JTextField();
-        JTextField miembrosField = new JTextField();
+        JTextField nombreField = new JTextField(24);
+        JTextField descripcionField = new JTextField(24);
+        JTextField miembrosField = new JTextField(24);
 
         gbc.gridx = 0;
         gbc.gridy = 0;
         form.add(new JLabel("Nombre:"), gbc);
         gbc.gridx = 1;
+        gbc.weightx = 1.0;
         form.add(nombreField, gbc);
+        gbc.weightx = 0.0;
 
         gbc.gridx = 0;
         gbc.gridy = 1;
         form.add(new JLabel("Descripción:"), gbc);
         gbc.gridx = 1;
+        gbc.weightx = 1.0;
         form.add(descripcionField, gbc);
+        gbc.weightx = 0.0;
 
         gbc.gridx = 0;
         gbc.gridy = 2;
         form.add(new JLabel("Miembros (IDs separados por coma):"), gbc);
         gbc.gridx = 1;
+        gbc.weightx = 1.0;
         form.add(miembrosField, gbc);
+        gbc.weightx = 0.0;
 
         gbc.gridx = 0;
         gbc.gridy = 3;
