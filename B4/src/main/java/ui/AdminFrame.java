@@ -74,7 +74,7 @@ public class AdminFrame extends JFrame {
 
         gbc.gridx=0; gbc.gridy=2; alta.add(new JLabel("Ciudad:"), gbc);
         gbc.gridx=1; alta.add(ciudadField, gbc);
-        gbc.gridx=2; alta.add(new JLabel("País:"), gbc);
+        gbc.gridx=2; alta.add(new JLabel("Pais:"), gbc);
         gbc.gridx=3; alta.add(paisField, gbc);
 
         gbc.gridx=0; gbc.gridy=3; gbc.gridwidth=4; gbc.anchor = GridBagConstraints.EAST; gbc.fill = GridBagConstraints.NONE;
@@ -90,7 +90,7 @@ public class AdminFrame extends JFrame {
                 String ciudad = ciudadField.getText().trim();
                 String pais = paisField.getText().trim();
                 if (nombre.isEmpty() || ciudad.isEmpty() || pais.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Complete nombre/ciudad/país", "Error", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Complete nombre/ciudad/Pais", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
                 services.SensorService.getInstance().crearSensor(nombre, tipo, lat, lon, ciudad, pais);
@@ -104,7 +104,7 @@ public class AdminFrame extends JFrame {
             }
         });
 
-        DefaultTableModel model = new DefaultTableModel(new Object[]{"ID","Nombre","Tipo","Ciudad","País","Estado"},0){
+        DefaultTableModel model = new DefaultTableModel(new Object[]{"ID","Nombre","Tipo","Ciudad","Pais","Estado"},0){
             @Override public boolean isCellEditable(int r,int c){return false;}
         };
         JTable table = new JTable(model);

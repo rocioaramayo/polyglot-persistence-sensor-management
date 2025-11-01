@@ -28,13 +28,13 @@ public class MedicionCassandraDAO {
             String id = UUID.randomUUID().toString();
             medicion.setId(id);
 
-            String cql = "INSERT INTO mediciones_by_sensor (sensor_id, fecha_hora, id, temperatura, humedad) " +
+            String cql = "INSERT INTO mediciones (sensor_id, fecha, id, temperatura, humedad) " +
                     "VALUES (?, toTimestamp(now()), ?, ?, ?)";
 
             session.execute(cql, medicion.getSensorId(), id, 
                     medicion.getTemperatura(), medicion.getHumedad());
         } catch (Exception e) {
-            throw new ErrorConexionCassandraException("Error al crear medición", e);
+            throw new ErrorConexionCassandraException("Error al crear medicion", e);
         }
     }
 
@@ -46,7 +46,7 @@ public class MedicionCassandraDAO {
         List<Medicion> mediciones = new ArrayList<>();
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
-            String cql = "SELECT * FROM mediciones_by_sensor WHERE sensor_id = ? LIMIT 100";
+            String cql = "SELECT * FROM mediciones WHERE sensor_id = ? LIMIT 100";
             ResultSet rs = session.execute(cql, sensorId);
             for (Row row : rs) {
                 mediciones.add(mapearMedicion(row));
@@ -61,8 +61,8 @@ public class MedicionCassandraDAO {
         List<Medicion> mediciones = new ArrayList<>();
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
-            String cql = "SELECT * FROM mediciones_by_sensor LIMIT ?";
-            ResultSet rs = session.execute(cql, cantidad);
+            String cql = "SELECT * FROM mediciones LIMIT 100";
+            ResultSet rs = session.execute(cql);
             for (Row row : rs) {
                 mediciones.add(mapearMedicion(row));
             }
