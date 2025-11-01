@@ -58,7 +58,15 @@ public class DashboardFrame extends JFrame {
         tabbedPane.addTab("Mensajería", crearPanelMensajeria());
         tabbedPane.addTab("Cuenta", crearPanelCuenta());
 
-        add(tabbedPane);
+        if (usuarioActual.getRol() != null && usuarioActual.getRol().equalsIgnoreCase("ADMINISTRADOR")) {
+            tabbedPane.addTab("Admin", crearPanelAdmin());
+        }
+
+        JPanel header = crearHeader();
+        JPanel container = new JPanel(new BorderLayout());
+        container.add(header, BorderLayout.NORTH);
+        container.add(tabbedPane, BorderLayout.CENTER);
+        add(container);
     }
 
     private JPanel crearPanelSensores() {
@@ -651,6 +659,90 @@ public class DashboardFrame extends JFrame {
 
         panel.add(top, BorderLayout.NORTH);
         panel.add(new JScrollPane(textArea), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearHeader() {
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
+
+        String nombre = (usuarioActual.getNombreCompleto() != null && !usuarioActual.getNombreCompleto().isBlank())
+                ? usuarioActual.getNombreCompleto() : usuarioActual.getEmail();
+        JLabel userLabel = new JLabel("Hola, " + (nombre != null ? nombre : "usuario") + "  (" + usuarioActual.getRol() + ")");
+        header.add(userLabel, BorderLayout.WEST);
+
+        JButton logoutBtn = new JButton("Cerrar sesion");
+        logoutBtn.addActionListener(this::handleLogout);
+        JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        right.add(logoutBtn);
+        header.add(right, BorderLayout.EAST);
+        return header;
+    }
+
+    private void handleLogout(java.awt.event.ActionEvent e) {
+        try {
+            AuthService.getInstance().logout(token);
+        } catch (ErrorConexionRedisException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo cerrar sesion: " + ex.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
+        }
+        SwingUtilities.invokeLater(() -> {
+            new LoginFrame().setVisible(true);
+            this.dispose();
+        });
+    }
+
+    private JPanel crearPanelAdmin() {
+        JPanel panel = new JPanel(new BorderLayout(0, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JLabel titulo = new JLabel("Administracion");
+        titulo.setFont(new Font("Arial", Font.BOLD, 16));
+        panel.add(titulo, BorderLayout.NORTH);
+
+        JPanel altaPanel = new JPanel(new GridBagLayout());
+        altaPanel.setBorder(BorderFactory.createTitledBorder("Alta de Tecnico"));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JTextField nombreField = new JTextField(20);
+        JTextField emailField = new JTextField(20);
+        JPasswordField passField = new JPasswordField(20);
+
+        gbc.gridx = 0; gbc.gridy = 0; altaPanel.add(new JLabel("Nombre:"), gbc);
+        gbc.gridx = 1; altaPanel.add(nombreField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1; altaPanel.add(new JLabel("Email:"), gbc);
+        gbc.gridx = 1; altaPanel.add(emailField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2; altaPanel.add(new JLabel("Contrasena:"), gbc);
+        gbc.gridx = 1; altaPanel.add(passField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; gbc.anchor = GridBagConstraints.EAST; gbc.fill = GridBagConstraints.NONE;
+        JButton crearBtn = new JButton("Crear Tecnico");
+        altaPanel.add(crearBtn, gbc);
+
+        crearBtn.addActionListener(ev -> {
+            String nombre = nombreField.getText().trim();
+            String email = emailField.getText().trim();
+            String pass = new String(passField.getPassword());
+            if (nombre.isEmpty() || email.isEmpty() || pass.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Completa todos los campos", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            try {
+                AuthService.getInstance().registrar(nombre, email, pass, "TECNICO");
+                JOptionPane.showMessageDialog(this, "Tecnico creado correctamente", "Exito", JOptionPane.INFORMATION_MESSAGE);
+                nombreField.setText("");
+                emailField.setText("");
+                passField.setText("");
+                cargarCatalogosMensajeria();
+            } catch (ErrorConexionMongoException ex) {
+                JOptionPane.showMessageDialog(this, "Error creando tecnico: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        panel.add(altaPanel, BorderLayout.CENTER);
         return panel;
     }
 }

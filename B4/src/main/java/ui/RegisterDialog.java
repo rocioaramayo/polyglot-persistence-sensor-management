@@ -11,7 +11,6 @@ public class RegisterDialog extends JDialog {
     private JTextField nombreField;
     private JTextField emailField;
     private JPasswordField passwordField;
-    private JComboBox<String> rolCombo;
 
     public RegisterDialog(Frame owner) {
         super(owner, "Registrar Usuario", true);
@@ -39,13 +38,8 @@ public class RegisterDialog extends JDialog {
         passwordField = new JPasswordField(20);
         gbc.gridx = 1; panel.add(passwordField, gbc);
 
-        // Rol
-        gbc.gridx = 0; gbc.gridy = 3; panel.add(new JLabel("Rol:"), gbc);
-        rolCombo = new JComboBox<>(new String[]{"USUARIO", "TECNICO", "ADMINISTRADOR"});
-        gbc.gridx = 1; panel.add(rolCombo, gbc);
-
         // Botones
-        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
         JPanel btnPanel = new JPanel();
         JButton cancelarBtn = new JButton("Cancelar");
         cancelarBtn.addActionListener(e -> dispose());
@@ -62,7 +56,7 @@ public class RegisterDialog extends JDialog {
         String nombre = nombreField.getText().trim();
         String email = emailField.getText().trim();
         String password = new String(passwordField.getPassword());
-        String rol = (String) rolCombo.getSelectedItem();
+        String rol = "USUARIO"; // Rol fijo para registro desde UI
 
         if (nombre.isEmpty() || email.isEmpty() || password.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Por favor completa todos los campos.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -78,4 +72,3 @@ public class RegisterDialog extends JDialog {
         }
     }
 }
-
