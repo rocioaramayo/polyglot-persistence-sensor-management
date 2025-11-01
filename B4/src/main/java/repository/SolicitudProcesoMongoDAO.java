@@ -1,0 +1,153 @@
+package repository;
+
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
+import connections.MongoPool;
+import exceptions.ErrorConexionMongoException;
+import modelo.SolicitudProceso;
+import org.bson.Document;
+import org.bson.types.ObjectId;
+
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+public class SolicitudProcesoMongoDAO {
+    private final MongoCollection<Document> collection;
+
+    public SolicitudProcesoMongoDAO() throws ErrorConexionMongoException {
+        MongoDatabase db = MongoPool.getInstance().getDatabase();
+        this.collection = db.getCollection("solicitudes_proceso");
+    }
+
+    public String insertar(SolicitudProceso solicitud) {
+        Document doc = new Document()
+                .append("usuario_id", solicitud.getUsuarioId())
+                .append("proceso_id", solicitud.getProcesoId())
+                .append("fecha_solicitud", Date.from(solicitud.getFechaSolicitud().atZone(ZoneId.systemDefault()).toInstant()))
+                .append("estado", solicitud.getEstado())
+                .append("parametros", solicitud.getParametros());
+        
+        if (solicitud.getTecnicoAsignadoId() != null) {
+            doc.append("tecnico_asignado_id", solicitud.getTecnicoAsignadoId());
+        }
+        
+        if (solicitud.getResultado() != null) {
+            doc.append("resultado", solicitud.getResultado());
+        }
+        
+        collection.insertOne(doc);
+        return doc.getObjectId("_id").toString();
+    }
+
+    public SolicitudProceso buscarPorId(String id) {
+        Document doc = collection.find(Filters.eq("_id", new ObjectId(id))).first();
+        if (doc == null) return null;
+
+        SolicitudProceso solicitud = new SolicitudProceso();
+        solicitud.setId(id);
+        solicitud.setUsuarioId(doc.getString("usuario_id"));
+        solicitud.setProcesoId(doc.getString("proceso_id"));
+        solicitud.setEstado(doc.getString("estado"));
+        if (doc.getDate("fecha_solicitud") != null) {
+            solicitud.setFechaSolicitud(doc.getDate("fecha_solicitud").toInstant()
+                    .atZone(ZoneId.systemDefault()).toLocalDateTime());
+        }
+        org.bson.Document paramsDoc = doc.get("parametros", org.bson.Document.class);
+        if (paramsDoc != null) {
+            // Document implements Map<String,Object> so we can pass it directly
+            solicitud.setParametros(paramsDoc);
+        }
+        
+        if (doc.containsKey("tecnico_asignado_id")) {
+            solicitud.setTecnicoAsignadoId(doc.getString("tecnico_asignado_id"));
+        }
+        
+        if (doc.containsKey("resultado")) {
+            solicitud.setResultado(doc.getString("resultado"));
+        }
+        
+        return solicitud;
+    }
+
+    public List<SolicitudProceso> listarPorUsuario(String usuarioId) {
+        List<SolicitudProceso> solicitudes = new ArrayList<>();
+        for (Document doc : collection.find(Filters.eq("usuario_id", usuarioId))) {
+            SolicitudProceso solicitud = new SolicitudProceso();
+            solicitud.setId(doc.getObjectId("_id").toString());
+            solicitud.setUsuarioId(doc.getString("usuario_id"));
+            solicitud.setProcesoId(doc.getString("proceso_id"));
+            solicitud.setEstado(doc.getString("estado"));
+            if (doc.getDate("fecha_solicitud") != null) {
+                solicitud.setFechaSolicitud(doc.getDate("fecha_solicitud").toInstant()
+                        .atZone(ZoneId.systemDefault()).toLocalDateTime());
+            }
+            org.bson.Document paramsDoc = doc.get("parametros", org.bson.Document.class);
+            if (paramsDoc != null) {
+                solicitud.setParametros(paramsDoc);
+            }
+            
+            solicitudes.add(solicitud);
+        }
+        return solicitudes;
+    }
+
+    public List<SolicitudProceso> listarPorTecnico(String tecnicoId) {
+        List<SolicitudProceso> solicitudes = new ArrayList<>();
+        for (Document doc : collection.find(Filters.eq("tecnico_asignado_id", tecnicoId))) {
+            SolicitudProceso solicitud = new SolicitudProceso();
+            solicitud.setId(doc.getObjectId("_id").toString());
+            solicitud.setUsuarioId(doc.getString("usuario_id"));
+            solicitud.setProcesoId(doc.getString("proceso_id"));
+            solicitud.setEstado(doc.getString("estado"));
+            solicitud.setTecnicoAsignadoId(doc.getString("tecnico_asignado_id"));
+            solicitudes.add(solicitud);
+        }
+        return solicitudes;
+    }
+
+    public List<SolicitudProceso> listarPendientes() {
+        List<SolicitudProceso> solicitudes = new ArrayList<>();
+        for (Document doc : collection.find(Filters.eq("estado", "pendiente"))) {
+            SolicitudProceso solicitud = new SolicitudProceso();
+            solicitud.setId(doc.getObjectId("_id").toString());
+            solicitud.setUsuarioId(doc.getString("usuario_id"));
+            solicitud.setProcesoId(doc.getString("proceso_id"));
+            solicitud.setEstado(doc.getString("estado"));
+            if (doc.getDate("fecha_solicitud") != null) {
+                solicitud.setFechaSolicitud(doc.getDate("fecha_solicitud").toInstant()
+                        .atZone(ZoneId.systemDefault()).toLocalDateTime());
+            }
+            org.bson.Document paramsDoc = doc.get("parametros", org.bson.Document.class);
+            if (paramsDoc != null) {
+                solicitud.setParametros(paramsDoc);
+            }
+            
+            solicitudes.add(solicitud);
+        }
+        return solicitudes;
+    }
+
+    public void actualizarEstado(String id, String estado) {
+        collection.updateOne(
+                Filters.eq("_id", new ObjectId(id)),
+                new Document("$set", new Document("estado", estado))
+        );
+    }
+
+    public void asignarTecnico(String id, String tecnicoId) {
+        collection.updateOne(
+                Filters.eq("_id", new ObjectId(id)),
+                new Document("$set", new Document("tecnico_asignado_id", tecnicoId))
+        );
+    }
+    
+    public void actualizarResultado(String id, String resultado) {
+        collection.updateOne(
+                Filters.eq("_id", new ObjectId(id)),
+                new Document("$set", new Document("resultado", resultado))
+        );
+    }
+}
