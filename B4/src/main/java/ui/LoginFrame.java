@@ -88,6 +88,8 @@ public class LoginFrame extends JFrame {
             if (token != null) {
                 currentToken = token;
                 try {
+                    // Iniciar simulación continua de mediciones (global)
+                    services.AutoMedicionService.getInstance().start();
                     var usuario = AuthService.getInstance().validarToken(token);
                     if (usuario != null && usuario.getRol() != null && usuario.getRol().equalsIgnoreCase("ADMINISTRADOR")) {
                         AdminFrame admin = new AdminFrame(currentToken);

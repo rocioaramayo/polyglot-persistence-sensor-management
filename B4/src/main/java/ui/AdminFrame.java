@@ -24,6 +24,7 @@ public class AdminFrame extends JFrame {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
         JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("Sensores", crearPanelSensores());
         tabs.addTab("Técnicos", crearPanelTecnicos());
         tabs.addTab("Procesos", crearPanelProcesos());
         tabs.addTab("Alertas", crearPanelAlertas());
@@ -41,6 +42,121 @@ public class AdminFrame extends JFrame {
         container.add(header, BorderLayout.NORTH);
         container.add(tabs, BorderLayout.CENTER);
         add(container);
+    }
+
+    private JPanel crearPanelSensores() {
+        JPanel panel = new JPanel(new BorderLayout(10,10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
+
+        // Alta de sensor
+        JPanel alta = new JPanel(new GridBagLayout());
+        alta.setBorder(BorderFactory.createTitledBorder("Crear Sensor"));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5,5,5,5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JTextField nombreField = new JTextField(16);
+        JComboBox<String> tipoCombo = new JComboBox<>(new String[]{"temperatura","humedad"});
+        JTextField latField = new JTextField(8);
+        JTextField lonField = new JTextField(8);
+        JTextField ciudadField = new JTextField(12);
+        JTextField paisField = new JTextField(12);
+
+        gbc.gridx=0; gbc.gridy=0; alta.add(new JLabel("Nombre:"), gbc);
+        gbc.gridx=1; alta.add(nombreField, gbc);
+        gbc.gridx=2; alta.add(new JLabel("Tipo:"), gbc);
+        gbc.gridx=3; alta.add(tipoCombo, gbc);
+
+        gbc.gridx=0; gbc.gridy=1; alta.add(new JLabel("Latitud:"), gbc);
+        gbc.gridx=1; alta.add(latField, gbc);
+        gbc.gridx=2; alta.add(new JLabel("Longitud:"), gbc);
+        gbc.gridx=3; alta.add(lonField, gbc);
+
+        gbc.gridx=0; gbc.gridy=2; alta.add(new JLabel("Ciudad:"), gbc);
+        gbc.gridx=1; alta.add(ciudadField, gbc);
+        gbc.gridx=2; alta.add(new JLabel("País:"), gbc);
+        gbc.gridx=3; alta.add(paisField, gbc);
+
+        gbc.gridx=0; gbc.gridy=3; gbc.gridwidth=4; gbc.anchor = GridBagConstraints.EAST; gbc.fill = GridBagConstraints.NONE;
+        JButton crearBtn = new JButton("Crear");
+        alta.add(crearBtn, gbc);
+
+        crearBtn.addActionListener(e -> {
+            try {
+                String nombre = nombreField.getText().trim();
+                String tipo = (String) tipoCombo.getSelectedItem();
+                double lat = Double.parseDouble(latField.getText().trim());
+                double lon = Double.parseDouble(lonField.getText().trim());
+                String ciudad = ciudadField.getText().trim();
+                String pais = paisField.getText().trim();
+                if (nombre.isEmpty() || ciudad.isEmpty() || pais.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Complete nombre/ciudad/país", "Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                services.SensorService.getInstance().crearSensor(nombre, tipo, lat, lon, ciudad, pais);
+                // No es necesario setear flag: por defecto queda ACTIVA si no hay registro en Mongo
+                JOptionPane.showMessageDialog(this, "Sensor creado (extracción ACTIVA por defecto)", "OK", JOptionPane.INFORMATION_MESSAGE);
+                nombreField.setText(""); latField.setText(""); lonField.setText(""); ciudadField.setText(""); paisField.setText("");
+            } catch (NumberFormatException nfe) {
+                JOptionPane.showMessageDialog(this, "Lat/Long deben ser numéricos", "Error", JOptionPane.ERROR_MESSAGE);
+            } catch (exceptions.ErrorConexionCassandraException ex) {
+                JOptionPane.showMessageDialog(this, "Error creando sensor: "+ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        DefaultTableModel model = new DefaultTableModel(new Object[]{"ID","Nombre","Tipo","Ciudad","País","Estado"},0){
+            @Override public boolean isCellEditable(int r,int c){return false;}
+        };
+        JTable table = new JTable(model);
+        table.setAutoCreateRowSorter(true);
+
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton refrescar = new JButton("Refrescar");
+        JButton toggle = new JButton("Habilitar/Deshabilitar extracción");
+        
+        acciones.add(refrescar);
+        acciones.add(toggle);
+        
+        // Generación automática global se inicia al hacer login; no necesitamos controles aquí
+
+        refrescar.addActionListener(e -> { cargarSensores(model); });
+        toggle.addActionListener(e -> {
+            int row = table.getSelectedRow();
+            if (row < 0) { JOptionPane.showMessageDialog(this, "Selecciona un sensor", "Aviso", JOptionPane.WARNING_MESSAGE); return; }
+            int modelRow = table.convertRowIndexToModel(row);
+            String id = (String) model.getValueAt(modelRow, 0);
+            String estado = (String) model.getValueAt(modelRow, 5);
+            boolean activa = "ACTIVO".equalsIgnoreCase(estado);
+            try {
+                repository.SensorCassandraDAO.getInstance().actualizarEstado(id, activa ? "INACTIVO" : "ACTIVO");
+                cargarSensores(model);
+            } catch (exceptions.ErrorConexionCassandraException ex) {
+                JOptionPane.showMessageDialog(this, "Error actualizando estado: "+ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        
+
+        // Controles de auto-generación eliminados (corre global y continuo)
+
+        cargarSensores(model);
+        panel.add(alta, BorderLayout.NORTH);
+        panel.add(new JScrollPane(table), BorderLayout.CENTER);
+        panel.add(acciones, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private void cargarSensores(DefaultTableModel model) {
+        try {
+            java.util.List<modelo.Sensor> sensores = repository.SensorCassandraDAO.getInstance().listarTodos();
+            model.setRowCount(0);
+            for (modelo.Sensor s : sensores) {
+                String est = s.getEstado() != null ? s.getEstado().toUpperCase() : "ACTIVO";
+                model.addRow(new Object[]{ s.getId(), s.getNombre(), s.getTipo(), s.getCiudad(), s.getPais(), est });
+            }
+        } catch (exceptions.ErrorConexionCassandraException e) {
+            JOptionPane.showMessageDialog(this, "Error cargando sensores: "+e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private JPanel crearPanelTecnicos() {
@@ -296,4 +412,3 @@ public class AdminFrame extends JFrame {
         }
     }
 }
-

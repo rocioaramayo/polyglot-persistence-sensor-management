@@ -69,6 +69,21 @@ public class SensorCassandraDAO {
         return sensores;
     }
 
+    public List<Sensor> listarTodos() throws ErrorConexionCassandraException {
+        List<Sensor> sensores = new ArrayList<>();
+        try {
+            CqlSession session = CassandraPool.getInstance().getSession();
+            String cql = "SELECT * FROM sensores_by_id";
+            ResultSet rs = session.execute(cql);
+            for (Row row : rs) {
+                sensores.add(mapearSensor(row));
+            }
+        } catch (Exception e) {
+            throw new ErrorConexionCassandraException("Error al listar sensores", e);
+        }
+        return sensores;
+    }
+
     private Sensor mapearSensor(Row row) {
         Sensor sensor = new Sensor();
         sensor.setId(row.getString("id"));
@@ -80,5 +95,15 @@ public class SensorCassandraDAO {
         sensor.setPais(row.getString("pais"));
         sensor.setEstado(row.getString("estado"));
         return sensor;
+    }
+
+    public void actualizarEstado(String id, String nuevoEstado) throws ErrorConexionCassandraException {
+        try {
+            CqlSession session = CassandraPool.getInstance().getSession();
+            String cql = "UPDATE sensores_by_id SET estado = ? WHERE id = ?";
+            session.execute(cql, nuevoEstado, id);
+        } catch (Exception e) {
+            throw new ErrorConexionCassandraException("Error al actualizar estado del sensor", e);
+        }
     }
 }
