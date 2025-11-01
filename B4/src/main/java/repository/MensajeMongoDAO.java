@@ -41,12 +41,16 @@ public class MensajeMongoDAO {
             mensaje.setFechaHora(fecha);
             Boolean leido = mensaje.getLeido() != null ? mensaje.getLeido() : Boolean.FALSE;
             mensaje.setLeido(leido);
+            String tipo = mensaje.getTipo() != null && !mensaje.getTipo().isBlank()
+                    ? mensaje.getTipo().trim().toUpperCase()
+                    : "PRIVADO";
+            mensaje.setTipo(tipo);
 
             Document doc = new Document()
                     .append("remitenteId", mensaje.getRemitenteId())
                     .append("destinatarioId", mensaje.getDestinatarioId())
                     .append("contenido", mensaje.getContenido())
-                    .append("tipo", mensaje.getTipo())
+                    .append("tipo", tipo)
                     .append("fechaHora", Date.from(fecha.atZone(ZoneId.systemDefault()).toInstant()))
                     .append("leido", leido);
 
@@ -77,7 +81,7 @@ public class MensajeMongoDAO {
 
             if (grupoIds != null && !grupoIds.isEmpty()) {
                 Bson filtroGrupo = Filters.and(
-                        Filters.in("tipo", Arrays.asList("GRUPAL", "grupal")),
+                        Filters.eq("tipo", "GRUPAL"),
                         Filters.in("destinatarioId", grupoIds)
                 );
                 condiciones.add(filtroGrupo);

@@ -113,31 +113,27 @@ function createColl(name, options) {
     })
 
     // Colección de Mensajes
+        // Colecci�n de Mensajes (alineado con la app: ids string y campos camelCase)
     createColl("mensajes", {
       validator: {
         $jsonSchema: {
           bsonType: "object",
-          required: ["remitente_id", "fecha", "contenido", "tipo"],
+          required: ["remitenteId", "destinatarioId", "contenido", "tipo", "fechaHora"],
           properties: {
             _id: { bsonType: "objectId" },
-            remitente_id: { bsonType: "int", description: "ID del usuario remitente" },
-            destinatario_id: { bsonType: "int", description: "ID del usuario destinatario (para mensajes privados)" },
-            grupo_id: { bsonType: "objectId", description: "ID del grupo (para mensajes grupales)" },
+            remitenteId: { bsonType: "string" },
+            destinatarioId: { bsonType: "string" },
             contenido: { bsonType: "string" },
-            fecha: { bsonType: "date" },
-            tipo: { bsonType: "string", enum: ["PRIVADO", "GRUPAL"], description: "Tipo de mensaje" },
-            leido: { bsonType: "bool", description: "Indica si el mensaje fue leído" },
-            adjuntos: {
-              bsonType: "array",
-              items: { bsonType: "string" },
-              description: "URLs de archivos adjuntos",
-            },
+            fechaHora: { bsonType: "date" },
+            tipo: { bsonType: "string", enum: ["PRIVADO", "GRUPAL", "privado", "grupal"] },
+            leido: { bsonType: "bool" },
+            adjuntos: { bsonType: "array", items: { bsonType: "string" } }
           },
         },
       },
     })
 
-    createColl("grupos", {
+        const gruposValidator = {
       validator: {
         $jsonSchema: {
           bsonType: "object",
@@ -146,17 +142,15 @@ function createColl(name, options) {
             _id: { bsonType: "objectId" },
             nombre: { bsonType: "string" },
             descripcion: { bsonType: "string" },
-            miembros: {
-              bsonType: "array",
-              items: { bsonType: "int" },
-              description: "IDs de usuarios miembros del grupo",
-            },
+            miembros: { bsonType: "array", items: { bsonType: "string" } },
+            administradores: { bsonType: "array", items: { bsonType: "string" } },
             fecha_creacion: { bsonType: "date" },
             activo: { bsonType: "bool" },
           },
         },
       },
-    })
+    };
+    createColl("grupos", gruposValidator)
 
     // Colección de Alertas
     createColl("alertas", {

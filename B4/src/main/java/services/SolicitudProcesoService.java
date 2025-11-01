@@ -139,7 +139,7 @@ public class SolicitudProcesoService {
             mensaje.setRemitente("system"); // sistema como id simbólico
             mensaje.setDestinatario(s.getUsuarioId());
             mensaje.setContenido("Su informe solicitado (" + solicitudId + ") ha sido completado.");
-            mensaje.setTipo("privado");
+            mensaje.setTipo("PRIVADO");
             MensajeMongoDAO.getInstance().crear(mensaje);
         } catch (Exception e) {
             // si falla la notificación, no impedir el flujo principal
