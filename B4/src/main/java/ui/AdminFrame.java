@@ -81,6 +81,9 @@ public class AdminFrame extends JFrame {
         JButton crearBtn = new JButton("Crear");
         alta.add(crearBtn, gbc);
 
+        // Declarar la tabla y el modelo antes del listener para refrescar tras crear
+        
+
         crearBtn.addActionListener(e -> {
             try {
                 String nombre = nombreField.getText().trim();
@@ -97,6 +100,7 @@ public class AdminFrame extends JFrame {
                 // No es necesario setear flag: por defecto queda ACTIVA si no hay registro en Mongo
                 JOptionPane.showMessageDialog(this, "Sensor creado (extracción ACTIVA por defecto)", "OK", JOptionPane.INFORMATION_MESSAGE);
                 nombreField.setText(""); latField.setText(""); lonField.setText(""); ciudadField.setText(""); paisField.setText("");
+                cargarSensores(model);
             } catch (NumberFormatException nfe) {
                 JOptionPane.showMessageDialog(this, "Lat/Long deben ser numéricos", "Error", JOptionPane.ERROR_MESSAGE);
             } catch (exceptions.ErrorConexionCassandraException ex) {
