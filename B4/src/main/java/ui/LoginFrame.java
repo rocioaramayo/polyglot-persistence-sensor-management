@@ -4,6 +4,7 @@ import javax.swing.*;
 import services.AuthService;
 import exceptions.ErrorConexionRedisException;
 import exceptions.ErrorConexionMongoException;
+import exceptions.ErrorConexionMySQLException;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 
@@ -86,7 +87,19 @@ public class LoginFrame extends JFrame {
             String token = AuthService.getInstance().login(email, password);
             if (token != null) {
                 currentToken = token;
-                openDashboard();
+                try {
+                    var usuario = AuthService.getInstance().validarToken(token);
+                    if (usuario != null && usuario.getRol() != null && usuario.getRol().equalsIgnoreCase("ADMINISTRADOR")) {
+                        AdminFrame admin = new AdminFrame(currentToken);
+                        admin.setVisible(true);
+                        this.dispose();
+                    } else {
+                        openDashboard();
+                    }
+                } catch (ErrorConexionRedisException | ErrorConexionMySQLException ex) {
+                    // Si falla la validación del token, procedemos al dashboard genérico
+                    openDashboard();
+                }
             } else {
                 JOptionPane.showMessageDialog(this, "Invalid credentials", "Error", JOptionPane.ERROR_MESSAGE);
             }
