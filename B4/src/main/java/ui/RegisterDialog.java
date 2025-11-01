@@ -9,12 +9,15 @@ import java.awt.event.ActionEvent;
 
 public class RegisterDialog extends JDialog {
     private JTextField nombreField;
+    private JTextField apellidoField;
     private JTextField emailField;
     private JPasswordField passwordField;
+    private JTextField telefonoField;
+    private JTextField direccionField;
 
     public RegisterDialog(Frame owner) {
         super(owner, "Registrar Usuario", true);
-        setSize(400, 280);
+        setSize(400, 360);
         setLocationRelativeTo(owner);
         setResizable(false);
 
@@ -28,18 +31,33 @@ public class RegisterDialog extends JDialog {
         nombreField = new JTextField(20);
         gbc.gridx = 1; panel.add(nombreField, gbc);
 
+        // Apellido
+        gbc.gridx = 0; gbc.gridy = 1; panel.add(new JLabel("Apellido:"), gbc);
+        apellidoField = new JTextField(20);
+        gbc.gridx = 1; panel.add(apellidoField, gbc);
+
         // Email
-        gbc.gridx = 0; gbc.gridy = 1; panel.add(new JLabel("Email:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 2; panel.add(new JLabel("Email:"), gbc);
         emailField = new JTextField(20);
         gbc.gridx = 1; panel.add(emailField, gbc);
 
         // Password
-        gbc.gridx = 0; gbc.gridy = 2; panel.add(new JLabel("Contraseña:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 3; panel.add(new JLabel("Contraseña:"), gbc);
         passwordField = new JPasswordField(20);
         gbc.gridx = 1; panel.add(passwordField, gbc);
 
+        // Telefono
+        gbc.gridx = 0; gbc.gridy = 4; panel.add(new JLabel("Telefono:"), gbc);
+        telefonoField = new JTextField(20);
+        gbc.gridx = 1; panel.add(telefonoField, gbc);
+
+        // Direccion
+        gbc.gridx = 0; gbc.gridy = 5; panel.add(new JLabel("Direccion:"), gbc);
+        direccionField = new JTextField(20);
+        gbc.gridx = 1; panel.add(direccionField, gbc);
+
         // Botones
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+        gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
         JPanel btnPanel = new JPanel();
         JButton cancelarBtn = new JButton("Cancelar");
         cancelarBtn.addActionListener(e -> dispose());
@@ -54,17 +72,20 @@ public class RegisterDialog extends JDialog {
 
     private void handleRegistrar(ActionEvent e) {
         String nombre = nombreField.getText().trim();
+        String apellido = apellidoField.getText().trim();
         String email = emailField.getText().trim();
         String password = new String(passwordField.getPassword());
         String rol = "USUARIO"; // Rol fijo para registro desde UI
+        String telefono = telefonoField.getText();
+        String direccion = direccionField.getText();
 
-        if (nombre.isEmpty() || email.isEmpty() || password.isEmpty()) {
+        if (nombre.isEmpty() || apellido.isEmpty() || email.isEmpty() || password.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Por favor completa todos los campos.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         try {
-            AuthService.getInstance().registrar(nombre, email, password, rol);
+            AuthService.getInstance().registrar(nombre, apellido, email, password, rol, telefono.trim(), direccion.trim());
             JOptionPane.showMessageDialog(this, "¡Registro exitoso! Ahora puedes iniciar sesión.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             dispose();
         } catch (ErrorConexionMongoException ex) {

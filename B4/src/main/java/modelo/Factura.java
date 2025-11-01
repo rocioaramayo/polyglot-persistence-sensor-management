@@ -9,6 +9,11 @@ public class Factura {
     private Double monto;
     private String estado; // pendiente, pagada, vencida
     private String descripcion;
+    // Datos de facturacion (snapshot)
+    private String nombreFacturacion;
+    private String apellidoFacturacion;
+    private String direccionFacturacion;
+    private String telefonoFacturacion;
 
     public Factura() {}
 
@@ -40,4 +45,16 @@ public class Factura {
 
     public String getDescripcion() { return descripcion; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+
+    public String getNombreFacturacion() { return nombreFacturacion; }
+    public void setNombreFacturacion(String nombreFacturacion) { this.nombreFacturacion = nombreFacturacion; }
+
+    public String getApellidoFacturacion() { return apellidoFacturacion; }
+    public void setApellidoFacturacion(String apellidoFacturacion) { this.apellidoFacturacion = apellidoFacturacion; }
+
+    public String getDireccionFacturacion() { return direccionFacturacion; }
+    public void setDireccionFacturacion(String direccionFacturacion) { this.direccionFacturacion = direccionFacturacion; }
+
+    public String getTelefonoFacturacion() { return telefonoFacturacion; }
+    public void setTelefonoFacturacion(String telefonoFacturacion) { this.telefonoFacturacion = telefonoFacturacion; }
 }

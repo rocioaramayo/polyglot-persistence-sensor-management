@@ -30,6 +30,11 @@ CREATE TABLE IF NOT EXISTS facturas (
     fecha_vencimiento DATETIME,
     estado VARCHAR(20) DEFAULT 'PENDIENTE',
     descripcion TEXT,
+    -- Datos de facturacion (snapshot)
+    nombre_facturacion VARCHAR(100) NULL,
+    apellido_facturacion VARCHAR(100) NULL,
+    direccion_facturacion VARCHAR(255) NULL,
+    telefono_facturacion VARCHAR(50) NULL,
     INDEX idx_usuario (usuario_id),
     INDEX idx_estado (estado),
     INDEX idx_fecha_emision (fecha_emision)

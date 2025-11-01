@@ -20,7 +20,7 @@ public class FacturaMySQLRepository {
     }
 
     public void crear(Factura factura) throws ErrorConexionMySQLException {
-        String sql = "INSERT INTO facturas (usuario_id, fecha_emision, monto, estado, descripcion) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO facturas (usuario_id, fecha_emision, monto, estado, descripcion, nombre_facturacion, apellido_facturacion, direccion_facturacion, telefono_facturacion, numero_factura) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = MySQLPool.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             if (factura.getUsuarioId() != null) {
@@ -32,6 +32,12 @@ public class FacturaMySQLRepository {
             stmt.setDouble(3, factura.getMonto());
             stmt.setString(4, factura.getEstado());
             stmt.setString(5, factura.getDescripcion());
+            stmt.setString(6, factura.getNombreFacturacion());
+            stmt.setString(7, factura.getApellidoFacturacion());
+            stmt.setString(8, factura.getDireccionFacturacion());
+            stmt.setString(9, factura.getTelefonoFacturacion());
+            // numero_factura simple: F-<epochMillis>
+            stmt.setString(10, "F-" + System.currentTimeMillis());
             stmt.executeUpdate();
         } catch (SQLException e) {
             throw new ErrorConexionMySQLException("Error al crear factura", e);
@@ -71,6 +77,10 @@ public class FacturaMySQLRepository {
         factura.setMonto(rs.getDouble("monto"));
         factura.setEstado(rs.getString("estado"));
         factura.setDescripcion(rs.getString("descripcion"));
+        try { factura.setNombreFacturacion(rs.getString("nombre_facturacion")); } catch (Exception ignored) {}
+        try { factura.setApellidoFacturacion(rs.getString("apellido_facturacion")); } catch (Exception ignored) {}
+        try { factura.setDireccionFacturacion(rs.getString("direccion_facturacion")); } catch (Exception ignored) {}
+        try { factura.setTelefonoFacturacion(rs.getString("telefono_facturacion")); } catch (Exception ignored) {}
         return factura;
     }
 }

@@ -4,6 +4,7 @@ import exceptions.ErrorConexionCassandraException;
 import exceptions.ErrorConexionMongoException;
 import exceptions.ErrorConexionMySQLException;
 import modelo.Factura;
+import modelo.Usuario;
 import modelo.HistorialEjecucion;
 import modelo.SolicitudProceso;
 import modelo.Proceso;
@@ -19,6 +20,7 @@ import repository.AlertaMongoDAO;
 import repository.MensajeMongoDAO;
 import modelo.Mensaje;
 import modelo.Alerta;
+import services.UsuarioService;
 
 import java.util.Map;
 
@@ -95,6 +97,15 @@ public class SolicitudProcesoService {
 
         // Crear factura en MySQL (usuarioId puede ser null si el usuario está en Mongo)
         Factura factura = new Factura(usuarioIdInt, monto, "Factura por solicitud " + solicitudId);
+        try {
+            Usuario usuario = UsuarioService.getInstance().obtenerPorId(s.getUsuarioId());
+            if (usuario != null) {
+                factura.setNombreFacturacion(usuario.getNombre());
+                factura.setApellidoFacturacion(usuario.getApellido());
+                factura.setDireccionFacturacion(usuario.getDireccion());
+                factura.setTelefonoFacturacion(usuario.getTelefono());
+            }
+        } catch (ErrorConexionMongoException ignore) {}
         FacturaMySQLRepository.getInstance().crear(factura);
 
         // Si tenemos un usuario numérico, actualizar cuenta y crear movimiento

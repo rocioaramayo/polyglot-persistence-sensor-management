@@ -45,16 +45,23 @@ public class AuthService {
         return token;
     }
 
-    public void registrar(String nombre, String email, String password, String rol) 
-                throws exceptions.ErrorConexionMongoException {
-            Usuario usuario = new Usuario(nombre, "", email, hashPassword(password), rol);
-            try {
-                UsuarioMongoDAO um = new UsuarioMongoDAO();
-                String id = um.insertar(usuario);
-                usuario.setId(id);
-            } catch (exceptions.ErrorConexionMongoException e) {
-                throw e;
-            }
+    public void registrar(String nombre, String email, String password, String rol)
+            throws exceptions.ErrorConexionMongoException {
+        registrar(nombre, "", email, password, rol, null, null);
+    }
+
+    public void registrar(String nombre, String apellido, String email, String password, String rol,
+                          String telefono, String direccion) throws exceptions.ErrorConexionMongoException {
+        Usuario usuario = new Usuario(nombre, apellido != null ? apellido : "", email, hashPassword(password), rol);
+        usuario.setTelefono(telefono);
+        usuario.setDireccion(direccion);
+        try {
+            UsuarioMongoDAO um = new UsuarioMongoDAO();
+            String id = um.insertar(usuario);
+            usuario.setId(id);
+        } catch (exceptions.ErrorConexionMongoException e) {
+            throw e;
+        }
     }
 
     public Usuario validarToken(String token) throws ErrorConexionRedisException, ErrorConexionMySQLException {

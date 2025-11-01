@@ -706,36 +706,54 @@ public class DashboardFrame extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         JTextField nombreField = new JTextField(20);
+        JTextField apellidoField = new JTextField(20);
         JTextField emailField = new JTextField(20);
         JPasswordField passField = new JPasswordField(20);
+        JTextField telefonoField = new JTextField(20);
+        JTextField direccionField = new JTextField(20);
 
         gbc.gridx = 0; gbc.gridy = 0; altaPanel.add(new JLabel("Nombre:"), gbc);
         gbc.gridx = 1; altaPanel.add(nombreField, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 1; altaPanel.add(new JLabel("Email:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 1; altaPanel.add(new JLabel("Apellido:"), gbc);
+        gbc.gridx = 1; altaPanel.add(apellidoField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 2; altaPanel.add(new JLabel("Email:"), gbc);
         gbc.gridx = 1; altaPanel.add(emailField, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 2; altaPanel.add(new JLabel("Contrasena:"), gbc);
+        gbc.gridx = 0; gbc.gridy = 3; altaPanel.add(new JLabel("Contrasena:"), gbc);
         gbc.gridx = 1; altaPanel.add(passField, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; gbc.anchor = GridBagConstraints.EAST; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx = 0; gbc.gridy = 4; altaPanel.add(new JLabel("Telefono:"), gbc);
+        gbc.gridx = 1; altaPanel.add(telefonoField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 5; altaPanel.add(new JLabel("Direccion:"), gbc);
+        gbc.gridx = 1; altaPanel.add(direccionField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2; gbc.anchor = GridBagConstraints.EAST; gbc.fill = GridBagConstraints.NONE;
         JButton crearBtn = new JButton("Crear Tecnico");
         altaPanel.add(crearBtn, gbc);
 
         crearBtn.addActionListener(ev -> {
             String nombre = nombreField.getText().trim();
+            String apellido = apellidoField.getText().trim();
             String email = emailField.getText().trim();
             String pass = new String(passField.getPassword());
-            if (nombre.isEmpty() || email.isEmpty() || pass.isEmpty()) {
+            String telefono = telefonoField.getText().trim();
+            String direccion = direccionField.getText().trim();
+            if (nombre.isEmpty() || apellido.isEmpty() || email.isEmpty() || pass.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Completa todos los campos", "Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
             try {
-                AuthService.getInstance().registrar(nombre, email, pass, "TECNICO");
+                AuthService.getInstance().registrar(nombre, apellido, email, pass, "TECNICO", telefono, direccion);
                 JOptionPane.showMessageDialog(this, "Tecnico creado correctamente", "Exito", JOptionPane.INFORMATION_MESSAGE);
                 nombreField.setText("");
+                apellidoField.setText("");
                 emailField.setText("");
                 passField.setText("");
+                telefonoField.setText("");
+                direccionField.setText("");
                 cargarCatalogosMensajeria();
             } catch (ErrorConexionMongoException ex) {
                 JOptionPane.showMessageDialog(this, "Error creando tecnico: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
