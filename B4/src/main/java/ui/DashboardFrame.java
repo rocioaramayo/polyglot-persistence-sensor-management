@@ -6,14 +6,14 @@ import services.*;
 import modelo.*;
 import exceptions.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
+
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+
 
 public class DashboardFrame extends JFrame {
     private String token;
@@ -67,64 +67,6 @@ public class DashboardFrame extends JFrame {
         container.add(header, BorderLayout.NORTH);
         container.add(tabbedPane, BorderLayout.CENTER);
         add(container);
-    }
-
-    private JPanel crearPanelSensores() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 10));
-        formPanel.setBorder(BorderFactory.createTitledBorder("Crear Sensor"));
-
-        JTextField nombreField = new JTextField();
-        JComboBox<String> tipoCombo = new JComboBox<>(new String[]{"temperatura", "humedad"});
-        JTextField latitudField = new JTextField();
-        JTextField longitudField = new JTextField();
-        JTextField ciudadField = new JTextField();
-        JTextField paisField = new JTextField();
-
-        formPanel.add(new JLabel("Nombre:"));
-        formPanel.add(nombreField);
-        formPanel.add(new JLabel("Tipo:"));
-        formPanel.add(tipoCombo);
-        formPanel.add(new JLabel("Latitud:"));
-        formPanel.add(latitudField);
-        formPanel.add(new JLabel("Longitud:"));
-        formPanel.add(longitudField);
-        formPanel.add(new JLabel("Ciudad:"));
-        formPanel.add(ciudadField);
-        formPanel.add(new JLabel("País:"));
-        formPanel.add(paisField);
-
-        JButton crearButton = new JButton("Crear Sensor");
-        crearButton.addActionListener(e -> {
-            try {
-                SensorService.getInstance().crearSensor(
-                    nombreField.getText(),
-                    (String) tipoCombo.getSelectedItem(),
-                    Double.parseDouble(latitudField.getText()),
-                    Double.parseDouble(longitudField.getText()),
-                    ciudadField.getText(),
-                    paisField.getText()
-                );
-                JOptionPane.showMessageDialog(this, "Sensor creado exitosamente", "Éxito", JOptionPane.INFORMATION_MESSAGE);
-                nombreField.setText("");
-                latitudField.setText("");
-                longitudField.setText("");
-                ciudadField.setText("");
-                paisField.setText("");
-            } catch (ErrorConexionCassandraException ex) {
-                JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        JPanel buttonPanel = new JPanel();
-        buttonPanel.add(crearButton);
-
-        panel.add(formPanel, BorderLayout.NORTH);
-        panel.add(buttonPanel, BorderLayout.CENTER);
-
-        return panel;
     }
 
     private JPanel crearPanelProcesos() {
@@ -562,16 +504,7 @@ public class DashboardFrame extends JFrame {
         return nombre + " (" + cantidad + " miembros)" + descripcion;
     }
 
-    private List<String> parsearMiembros(String texto) {
-        if (texto == null || texto.isBlank()) {
-            return new ArrayList<>();
-        }
-        return Arrays.stream(texto.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .distinct()
-                .collect(Collectors.toCollection(ArrayList::new));
-    }
+   
 
     private static class DestinatarioItem {
         private final String id;

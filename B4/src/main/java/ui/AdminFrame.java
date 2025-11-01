@@ -82,7 +82,11 @@ public class AdminFrame extends JFrame {
         alta.add(crearBtn, gbc);
 
         // Declarar la tabla y el modelo antes del listener para refrescar tras crear
-        
+        DefaultTableModel model = new DefaultTableModel(new Object[]{"ID","Nombre","Tipo","Ciudad","Pais","Estado"},0){
+            @Override public boolean isCellEditable(int r,int c){return false;}
+        };
+        JTable table = new JTable(model);
+        table.setAutoCreateRowSorter(true);
 
         crearBtn.addActionListener(e -> {
             try {
@@ -107,12 +111,6 @@ public class AdminFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Error creando sensor: "+ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         });
-
-        DefaultTableModel model = new DefaultTableModel(new Object[]{"ID","Nombre","Tipo","Ciudad","Pais","Estado"},0){
-            @Override public boolean isCellEditable(int r,int c){return false;}
-        };
-        JTable table = new JTable(model);
-        table.setAutoCreateRowSorter(true);
 
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton refrescar = new JButton("Refrescar");
