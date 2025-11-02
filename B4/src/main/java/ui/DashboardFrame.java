@@ -6,10 +6,9 @@ import services.*;
 import modelo.*;
 import exceptions.*;
 import java.awt.*;
-
+import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +30,29 @@ public class DashboardFrame extends JFrame {
     private final Map<String, String> usuariosCache = new HashMap<>();
     private final Map<String, String> gruposCache = new HashMap<>();
     private static final DateTimeFormatter MENSAJE_FORMATO = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private final Map<String, Proceso> procesoCache = new HashMap<>();
+    private List<Proceso> procesosDisponibles = new ArrayList<>();
+
+    private JComboBox<ProcesoItem> procesosCombo;
+    private JTextArea detalleProcesoArea;
+    private JTextField ciudadField;
+    private JTextField zonaField;
+    private JTextField paisField;
+    private JTextField fechaInicioField;
+    private JTextField fechaFinField;
+    private JTextField periodicidadField;
+    private JTextField observacionesField;
+    private JComboBox<String> tipoSensorCombo;
+    private DefaultTableModel solicitudesModel;
+    private JTable solicitudesTable;
+
+    private JLabel saldoLabel;
+    private JTextField depositoField;
+    private JTextField referenciaDepositoField;
+    private DefaultTableModel facturasModel;
+    private JTable facturasTable;
+    private DefaultTableModel movimientosModel;
+    private JTable movimientosTable;
 
     public DashboardFrame(String token) {
         this.token = token;
@@ -50,11 +72,13 @@ public class DashboardFrame extends JFrame {
             System.exit(1);
         }
 
+        cargarProcesosDisponibles();
+
         tabbedPane = new JTabbedPane();
         // La gestión de sensores se realiza solo en AdminFrame
         tabbedPane.addTab("Procesos", crearPanelProcesos());
-    tabbedPane.addTab("Solicitudes", crearPanelSolicitudes());
-    tabbedPane.addTab("Alertas", crearPanelAlertas());
+        tabbedPane.addTab("Solicitudes", crearPanelSolicitudes());
+        tabbedPane.addTab("Alertas", crearPanelAlertas());
         tabbedPane.addTab("Mensajería", crearPanelMensajeria());
         tabbedPane.addTab("Cuenta", crearPanelCuenta());
 
@@ -69,17 +93,51 @@ public class DashboardFrame extends JFrame {
         add(container);
     }
 
+    private void cargarProcesosDisponibles() {
+        try {
+            procesosDisponibles = ProcesoService.getInstance().listarActivos();
+            procesoCache.clear();
+            for (Proceso proceso : procesosDisponibles) {
+                if (proceso.getId() != null) {
+                    procesoCache.put(proceso.getId(), proceso);
+                }
+            }
+        } catch (ErrorConexionMongoException e) {
+            procesosDisponibles = new ArrayList<>();
+            System.err.println("No se pudieron cargar los procesos disponibles: " + e.getMessage());
+        }
+    }
+
     private JPanel crearPanelProcesos() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        JLabel label = new JLabel("Gestión de Procesos");
-        label.setFont(new Font("Arial", Font.BOLD, 14));
+        JLabel label = new JLabel("Catálogo de Procesos Disponibles");
+        label.setFont(new Font("Arial", Font.BOLD, 16));
         panel.add(label, BorderLayout.NORTH);
 
-        JTextArea textArea = new JTextArea("Procesos disponibles:\n1. PROMEDIO_MENSUAL\n2. MAX_MIN\n3. ALERTAS");
-        textArea.setEditable(false);
-        panel.add(new JScrollPane(textArea), BorderLayout.CENTER);
+        DefaultTableModel model = new DefaultTableModel(new Object[]{"Nombre", "Tipo", "Costo", "Descripción"}, 0) {
+            @Override public boolean isCellEditable(int r, int c){return false;}
+        };
+        JTable tabla = new JTable(model);
+        tabla.setFillsViewportHeight(true);
+        tabla.setAutoCreateRowSorter(true);
+
+        if (procesosDisponibles != null && !procesosDisponibles.isEmpty()) {
+            for (Proceso proceso : procesosDisponibles) {
+                String costo = proceso.getCosto() != null ? String.format("$ %.2f", proceso.getCosto()) : "-";
+                model.addRow(new Object[]{
+                        proceso.getNombre(),
+                        proceso.getTipo(),
+                        costo,
+                        proceso.getDescripcion()
+                });
+            }
+        } else {
+            model.addRow(new Object[]{"-", "-", "-", "No hay procesos disponibles en este momento"});
+        }
+
+        panel.add(new JScrollPane(tabla), BorderLayout.CENTER);
 
         return panel;
     }
@@ -525,95 +583,469 @@ public class DashboardFrame extends JFrame {
         }
     }
 
-    private JPanel crearPanelCuenta() {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    private static class ProcesoItem {
+        private final String id;
+        private final String nombre;
+        private final String descripcion;
+        private final String tipo;
+        private final Double costo;
 
-        JLabel label = new JLabel("Cuenta Corriente");
-        label.setFont(new Font("Arial", Font.BOLD, 14));
-        panel.add(label, BorderLayout.NORTH);
-
-        JTextArea textArea = new JTextArea();
-        textArea.setEditable(false);
-
-        try {
-            CuentaCorriente cuenta = null;
-            try {
-                cuenta = repository.CuentaMySQLRepository.getInstance()
-                        .obtenerPorUsuario(Integer.parseInt(usuarioActual.getId()));
-            } catch (NumberFormatException nfe) {
-                // id no numérico -> no hay cuenta en MySQL
-                cuenta = null;
+        ProcesoItem(Proceso proceso) {
+            if (proceso != null) {
+                this.id = proceso.getId();
+                this.nombre = proceso.getNombre();
+                this.descripcion = proceso.getDescripcion();
+                this.tipo = proceso.getTipo();
+                this.costo = proceso.getCosto();
+            } else {
+                this.id = null;
+                this.nombre = null;
+                this.descripcion = null;
+                this.tipo = null;
+                this.costo = null;
             }
-            if (cuenta != null) {
-                textArea.setText("Saldo: $" + cuenta.getSaldo() + "\n\nMovimientos:\n");
-                List<Movimiento> movimientos = repository.MovimientoMySQLRepository.getInstance()
-                        .obtenerPorCuenta(cuenta.getId());
-                for (Movimiento m : movimientos) {
-                    textArea.append(m.getTipo() + ": $" + m.getMonto() + " - " + m.getDescripcion() + "\n");
-                }
-            }
-        } catch (ErrorConexionMySQLException ex) {
-            textArea.setText("Error: " + ex.getMessage());
         }
 
-        panel.add(new JScrollPane(textArea), BorderLayout.CENTER);
+        String getId() {
+            return id;
+        }
+
+        @Override
+        public String toString() {
+            return nombre != null && !nombre.isBlank() ? nombre : "Selecciona un proceso";
+        }
+    }
+
+    private JPanel crearPanelCuenta() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JLabel titulo = new JLabel("Cuenta Corriente");
+        titulo.setFont(new Font("Arial", Font.BOLD, 16));
+        header.add(titulo);
+        saldoLabel = new JLabel("Saldo: --");
+        saldoLabel.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 0));
+        header.add(saldoLabel);
+        JPanel depositosPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        depositosPanel.setBorder(BorderFactory.createTitledBorder("Ingresar dinero"));
+        depositosPanel.add(new JLabel("Monto:"));
+        depositoField = new JTextField(8);
+        depositosPanel.add(depositoField);
+        depositosPanel.add(new JLabel("Referencia:"));
+        referenciaDepositoField = new JTextField(12);
+        depositosPanel.add(referenciaDepositoField);
+        JButton depositarBtn = new JButton("Depositar");
+        depositarBtn.addActionListener(e -> realizarDeposito());
+        depositosPanel.add(depositarBtn);
+
+        JPanel cabecera = new JPanel(new BorderLayout());
+        cabecera.add(header, BorderLayout.NORTH);
+        cabecera.add(depositosPanel, BorderLayout.SOUTH);
+        panel.add(cabecera, BorderLayout.NORTH);
+
+        facturasModel = new DefaultTableModel(new Object[]{"ID", "Descripción", "Monto", "Estado", "Emisión"}, 0) {
+            @Override public boolean isCellEditable(int r,int c){return false;}
+        };
+        facturasTable = new JTable(facturasModel);
+        facturasTable.setAutoCreateRowSorter(true);
+        facturasTable.setFillsViewportHeight(true);
+
+        JButton pagarBtn = new JButton("Pagar factura seleccionada");
+        pagarBtn.addActionListener(e -> pagarFacturaSeleccionada());
+        JButton refrescarCuentaBtn = new JButton("Refrescar");
+        refrescarCuentaBtn.addActionListener(e -> refrescarCuenta());
+        JPanel accionesFacturas = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        accionesFacturas.add(refrescarCuentaBtn);
+        accionesFacturas.add(pagarBtn);
+
+        JPanel facturasPanel = new JPanel(new BorderLayout());
+        facturasPanel.setBorder(BorderFactory.createTitledBorder("Facturas"));
+        facturasPanel.add(new JScrollPane(facturasTable), BorderLayout.CENTER);
+        facturasPanel.add(accionesFacturas, BorderLayout.SOUTH);
+
+        movimientosModel = new DefaultTableModel(new Object[]{"Fecha", "Tipo", "Monto", "Descripción"}, 0) {
+            @Override public boolean isCellEditable(int r,int c){return false;}
+        };
+        movimientosTable = new JTable(movimientosModel);
+        movimientosTable.setAutoCreateRowSorter(true);
+        movimientosTable.setFillsViewportHeight(true);
+
+        JPanel movimientosPanel = new JPanel(new BorderLayout());
+        movimientosPanel.setBorder(BorderFactory.createTitledBorder("Movimientos"));
+        movimientosPanel.add(new JScrollPane(movimientosTable), BorderLayout.CENTER);
+
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, facturasPanel, movimientosPanel);
+        split.setResizeWeight(0.5);
+        split.setBorder(null);
+        panel.add(split, BorderLayout.CENTER);
+
+        refrescarCuenta();
 
         return panel;
     }
 
     private JPanel crearPanelSolicitudes() {
-        JPanel panel = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        JPanel form = new JPanel(new GridLayout(4, 2, 10, 10));
-        form.setBorder(BorderFactory.createTitledBorder("Crear Solicitud de Proceso"));
+        JPanel formulario = new JPanel(new GridBagLayout());
+        formulario.setBorder(BorderFactory.createTitledBorder("Solicitar un proceso"));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 0;
+        gbc.gridy = 0;
 
-        JTextField procesoIdField = new JTextField();
-        JTextField parametrosField = new JTextField();
-        // parametros simple: key1=val1;key2=val2
+        procesosCombo = new JComboBox<>();
+        if (procesosDisponibles != null) {
+            for (Proceso proceso : procesosDisponibles) {
+                procesosCombo.addItem(new ProcesoItem(proceso));
+            }
+        }
+        procesosCombo.addActionListener(e -> actualizarDetalleProceso());
 
-        form.add(new JLabel("Proceso ID:"));
-        form.add(procesoIdField);
-        form.add(new JLabel("Parámetros (key=val;...):"));
-        form.add(parametrosField);
+        detalleProcesoArea = new JTextArea(4, 30);
+        detalleProcesoArea.setLineWrap(true);
+        detalleProcesoArea.setWrapStyleWord(true);
+        detalleProcesoArea.setEditable(false);
 
-        JButton crearBtn = new JButton("Crear Solicitud");
-        crearBtn.addActionListener(e -> {
-            String procesoId = procesoIdField.getText().trim();
-            String paramsText = parametrosField.getText().trim();
-            if (procesoId.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Ingrese el ID del proceso", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
+        ciudadField = new JTextField(18);
+        zonaField = new JTextField(18);
+        paisField = new JTextField(18);
+        fechaInicioField = new JTextField(12);
+        fechaFinField = new JTextField(12);
+        periodicidadField = new JTextField(12);
+        observacionesField = new JTextField(25);
+        tipoSensorCombo = new JComboBox<>(new String[]{"AUTO", "Temperatura", "Humedad"});
+
+        formulario.add(new JLabel("Proceso:"), gbc);
+        gbc.gridx = 1;
+        gbc.weightx = 1.0;
+        formulario.add(procesosCombo, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        gbc.gridwidth = 2;
+        gbc.weighty = 0;
+        formulario.add(new JScrollPane(detalleProcesoArea), gbc);
+        gbc.gridwidth = 1;
+        gbc.weightx = 0;
+
+        gbc.gridy++;
+        formulario.add(new JLabel("Ciudad:"), gbc);
+        gbc.gridx = 1;
+        formulario.add(ciudadField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        formulario.add(new JLabel("Zona / Región:"), gbc);
+        gbc.gridx = 1;
+        formulario.add(zonaField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        formulario.add(new JLabel("País:"), gbc);
+        gbc.gridx = 1;
+        formulario.add(paisField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        formulario.add(new JLabel("Tipo de sensor:"), gbc);
+        gbc.gridx = 1;
+        formulario.add(tipoSensorCombo, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        formulario.add(new JLabel("Fecha inicio (AAAA-MM-DD):"), gbc);
+        gbc.gridx = 1;
+        formulario.add(fechaInicioField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        formulario.add(new JLabel("Fecha fin (AAAA-MM-DD):"), gbc);
+        gbc.gridx = 1;
+        formulario.add(fechaFinField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        formulario.add(new JLabel("Periodicidad (ej. mensual):"), gbc);
+        gbc.gridx = 1;
+        formulario.add(periodicidadField, gbc);
+
+        gbc.gridx = 0;
+        gbc.gridy++;
+        formulario.add(new JLabel("Observaciones:"), gbc);
+        gbc.gridx = 1;
+        formulario.add(observacionesField, gbc);
+
+        JButton crearBtn = new JButton("Enviar solicitud");
+        crearBtn.addActionListener(e -> crearSolicitudUsuario());
+        JButton limpiarBtn = new JButton("Limpiar");
+        limpiarBtn.addActionListener(e -> limpiarFormularioSolicitud());
+
+        JPanel accionesForm = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        accionesForm.add(limpiarBtn);
+        accionesForm.add(crearBtn);
+
+        JPanel top = new JPanel(new BorderLayout());
+        top.add(formulario, BorderLayout.CENTER);
+        top.add(accionesForm, BorderLayout.SOUTH);
+
+        panel.add(top, BorderLayout.NORTH);
+
+        solicitudesModel = new DefaultTableModel(new Object[]{"ID", "Proceso", "Estado", "Técnico", "Sensor", "Fecha", "Resultado"}, 0) {
+            @Override public boolean isCellEditable(int r,int c){return false;}
+        };
+        solicitudesTable = new JTable(solicitudesModel);
+        solicitudesTable.setAutoCreateRowSorter(true);
+        solicitudesTable.setFillsViewportHeight(true);
+
+        JPanel tablaPanel = new JPanel(new BorderLayout());
+        tablaPanel.setBorder(BorderFactory.createTitledBorder("Historial de solicitudes"));
+        tablaPanel.add(new JScrollPane(solicitudesTable), BorderLayout.CENTER);
+        JButton refrescarBtn = new JButton("Refrescar");
+        refrescarBtn.addActionListener(e -> refrescarSolicitudesUsuario());
+        JPanel accionesTabla = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        accionesTabla.add(refrescarBtn);
+        tablaPanel.add(accionesTabla, BorderLayout.SOUTH);
+
+        panel.add(tablaPanel, BorderLayout.CENTER);
+
+        actualizarDetalleProceso();
+        refrescarSolicitudesUsuario();
+
+        return panel;
+    }
+
+    private void actualizarDetalleProceso() {
+        if (detalleProcesoArea == null || procesosCombo == null) {
+            return;
+        }
+        ProcesoItem item = (ProcesoItem) procesosCombo.getSelectedItem();
+        if (item == null || item.id == null) {
+            detalleProcesoArea.setText("Selecciona un proceso para ver sus detalles.");
+            return;
+        }
+        StringBuilder detalle = new StringBuilder();
+        detalle.append("Tipo: ").append(item.tipo != null ? item.tipo : "-").append("\n");
+        if (item.costo != null) {
+            detalle.append("Costo estimado: $").append(String.format("%.2f", item.costo)).append("\n");
+        }
+        if (item.descripcion != null && !item.descripcion.isBlank()) {
+            detalle.append("\n").append(item.descripcion);
+        }
+        detalleProcesoArea.setText(detalle.toString());
+    }
+
+    private void limpiarFormularioSolicitud() {
+        ciudadField.setText("");
+        zonaField.setText("");
+        paisField.setText("");
+        fechaInicioField.setText("");
+        fechaFinField.setText("");
+        periodicidadField.setText("");
+        observacionesField.setText("");
+        if (tipoSensorCombo != null) {
+            tipoSensorCombo.setSelectedIndex(0);
+        }
+    }
+
+    private void crearSolicitudUsuario() {
+        ProcesoItem item = (ProcesoItem) procesosCombo.getSelectedItem();
+        if (item == null || item.id == null) {
+            JOptionPane.showMessageDialog(this, "No hay un proceso seleccionado.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        Map<String, Object> params = new HashMap<>();
+        agregarParametro(params, "ciudad", ciudadField.getText());
+        agregarParametro(params, "zona", zonaField.getText());
+        agregarParametro(params, "pais", paisField.getText());
+        agregarParametro(params, "fechaInicio", fechaInicioField.getText());
+        agregarParametro(params, "fechaFin", fechaFinField.getText());
+        agregarParametro(params, "periodicidad", periodicidadField.getText());
+        agregarParametro(params, "observaciones", observacionesField.getText());
+        if (item.tipo != null) {
+            params.putIfAbsent("tipoProceso", item.tipo);
+        }
+        String tipoSensor = (String) tipoSensorCombo.getSelectedItem();
+        if (tipoSensor != null && !"AUTO".equalsIgnoreCase(tipoSensor)) {
+            params.put("tipoSensor", tipoSensor.toLowerCase());
+        }
+
+        try {
+            String solicitudId = SolicitudProcesoService.getInstance()
+                    .crearSolicitudUsuario(usuarioActual.getId(), item.id, params);
+            JOptionPane.showMessageDialog(this,
+                    "Solicitud enviada con éxito. ID: " + solicitudId,
+                    "Éxito",
+                    JOptionPane.INFORMATION_MESSAGE);
+            limpiarFormularioSolicitud();
+            refrescarSolicitudesUsuario();
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
+        } catch (ErrorConexionMongoException | ErrorConexionCassandraException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo crear la solicitud: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void refrescarSolicitudesUsuario() {
+        if (solicitudesModel == null) {
+            return;
+        }
+        solicitudesModel.setRowCount(0);
+        try {
+            List<SolicitudProceso> solicitudes = SolicitudProcesoService.getInstance()
+                    .listarPorUsuario(usuarioActual.getId());
+            for (SolicitudProceso sp : solicitudes) {
+                Map<String, Object> params = sp.getParametros();
+                String sensor = extraerParametro(params, "sensorId");
+                solicitudesModel.addRow(new Object[]{
+                        sp.getId(),
+                        obtenerNombreProceso(sp.getProcesoId()),
+                        sp.getEstado() != null ? sp.getEstado().toUpperCase() : "-",
+                        sp.getTecnicoAsignadoId() != null ? obtenerNombreUsuario(sp.getTecnicoAsignadoId()) : "-",
+                        sensor != null ? sensor : "-",
+                        sp.getFechaSolicitud() != null ? MENSAJE_FORMATO.format(sp.getFechaSolicitud()) : "-",
+                        sp.getResultado() != null ? sp.getResultado() : ""
+                });
+            }
+        } catch (ErrorConexionMongoException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudieron cargar las solicitudes: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void refrescarCuenta() {
+        try {
+            CuentaCorriente cuenta = CuentaService.getInstance().obtenerCuentaUsuario(usuarioActual.getId());
+            if (cuenta != null && saldoLabel != null) {
+                double saldo = cuenta.getSaldo() != null ? cuenta.getSaldo() : 0.0;
+                double limite = cuenta.getLimite() != null ? cuenta.getLimite() : 0.0;
+                saldoLabel.setText(String.format("Saldo: $ %.2f  | Crédito disponible: $ %.2f",
+                        saldo,
+                        limite + saldo));
+            } else if (saldoLabel != null) {
+                saldoLabel.setText("Saldo: sin cuenta (ID no numérico)");
             }
 
-            java.util.Map<String, Object> params = new java.util.HashMap<>();
-            if (!paramsText.isEmpty()) {
-                String[] pairs = paramsText.split(";");
-                for (String p : pairs) {
-                    String[] kv = p.split("=", 2);
-                    if (kv.length == 2) params.put(kv[0].trim(), kv[1].trim());
+            if (facturasModel != null) {
+                facturasModel.setRowCount(0);
+                for (Factura factura : CuentaService.getInstance().obtenerFacturas(usuarioActual.getId())) {
+                    facturasModel.addRow(new Object[]{
+                            factura.getId(),
+                            factura.getDescripcion(),
+                            factura.getMonto() != null ? String.format("$ %.2f", factura.getMonto()) : "-",
+                            factura.getEstado(),
+                            factura.getFechaEmision() != null ? MENSAJE_FORMATO.format(factura.getFechaEmision()) : "-"
+                    });
                 }
             }
 
-            try {
-                String solicitudId = services.SolicitudProcesoService.getInstance()
-                        .crearSolicitud(usuarioActual.getId(), procesoId, params);
-                JOptionPane.showMessageDialog(this, "Solicitud creada. ID: " + solicitudId, "Éxito", JOptionPane.INFORMATION_MESSAGE);
-                procesoIdField.setText("");
-                parametrosField.setText("");
-            } catch (exceptions.ErrorConexionMongoException ex) {
-                JOptionPane.showMessageDialog(this, "Error creando solicitud: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            if (movimientosModel != null) {
+                movimientosModel.setRowCount(0);
+                for (Movimiento mov : CuentaService.getInstance().obtenerMovimientos(usuarioActual.getId())) {
+                    movimientosModel.addRow(new Object[]{
+                            mov.getFecha() != null ? MENSAJE_FORMATO.format(mov.getFecha()) : "-",
+                            mov.getTipo(),
+                            mov.getMonto() != null ? String.format("$ %.2f", mov.getMonto()) : "-",
+                            mov.getDescripcion()
+                    });
+                }
             }
-        });
+        } catch (ErrorConexionMySQLException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo obtener la información de la cuenta: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
-        JPanel btnPanel = new JPanel();
-        btnPanel.add(crearBtn);
+    private void realizarDeposito() {
+        try {
+            double monto = Double.parseDouble(depositoField.getText().trim());
+            String referencia = referenciaDepositoField.getText();
+            CuentaService.getInstance().depositar(usuarioActual.getId(), monto, referencia);
+            JOptionPane.showMessageDialog(this, "Depósito aplicado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            depositoField.setText("");
+            referenciaDepositoField.setText("");
+            refrescarCuenta();
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Ingrese un monto válido.", "Aviso", JOptionPane.WARNING_MESSAGE);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
+        } catch (ErrorConexionMySQLException e) {
+            JOptionPane.showMessageDialog(this, "No se pudo registrar el depósito: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
-        panel.add(form, BorderLayout.NORTH);
-        panel.add(btnPanel, BorderLayout.CENTER);
+    private void pagarFacturaSeleccionada() {
+        if (facturasTable == null || facturasModel == null) {
+            return;
+        }
+        int row = facturasTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione una factura.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int modelRow = facturasTable.convertRowIndexToModel(row);
+        Object idObj = facturasModel.getValueAt(modelRow, 0);
+        Object estadoObj = facturasModel.getValueAt(modelRow, 3);
+        if (!(idObj instanceof Integer)) {
+            JOptionPane.showMessageDialog(this, "Factura inválida.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (estadoObj != null && "pagada".equalsIgnoreCase(estadoObj.toString())) {
+            JOptionPane.showMessageDialog(this, "La factura ya está pagada.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        try {
+            CuentaService.getInstance().pagarFactura(usuarioActual.getId(), (Integer) idObj, "SALDO_CUENTA");
+            JOptionPane.showMessageDialog(this, "Factura pagada correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            refrescarCuenta();
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
+        } catch (ErrorConexionMySQLException | SQLException e) {
+            JOptionPane.showMessageDialog(this, "No se pudo realizar el pago: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
-        return panel;
+    private void agregarParametro(Map<String, Object> params, String clave, String valor) {
+        if (valor != null) {
+            String trimmed = valor.trim();
+            if (!trimmed.isEmpty()) {
+                params.put(clave, trimmed);
+            }
+        }
+    }
+
+    private String extraerParametro(Map<String, Object> parametros, String clave) {
+        if (parametros == null) {
+            return null;
+        }
+        Object valor = parametros.get(clave);
+        return valor != null ? valor.toString() : null;
+    }
+
+    private String obtenerNombreProceso(String procesoId) {
+        if (procesoId == null || procesoId.isBlank()) {
+            return "-";
+        }
+        if (procesoCache.containsKey(procesoId)) {
+            Proceso proceso = procesoCache.get(procesoId);
+            return proceso != null && proceso.getNombre() != null ? proceso.getNombre() : procesoId;
+        }
+        try {
+            Proceso proceso = ProcesoService.getInstance().obtenerPorId(procesoId);
+            if (proceso != null) {
+                procesoCache.put(procesoId, proceso);
+                return proceso.getNombre() != null ? proceso.getNombre() : procesoId;
+            }
+        } catch (ErrorConexionMongoException ignored) {
+        }
+        return procesoId;
     }
 
     private JPanel crearPanelAlertas() {

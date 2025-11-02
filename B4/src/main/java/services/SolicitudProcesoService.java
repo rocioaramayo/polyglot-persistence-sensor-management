@@ -10,6 +10,7 @@ import modelo.SolicitudProceso;
 import modelo.Proceso;
 import modelo.CuentaCorriente;
 import modelo.Movimiento;
+import modelo.Sensor;
 import repository.SolicitudProcesoMongoDAO;
 import repository.HistorialEjecucionCassandraDAO;
 import repository.FacturaMySQLRepository;
@@ -20,8 +21,10 @@ import repository.AlertaMongoDAO;
 import repository.MensajeMongoDAO;
 import modelo.Mensaje;
 import modelo.Alerta;
+import services.SensorService;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -37,28 +40,28 @@ public class SolicitudProcesoService {
 
     public String crearSolicitud(String usuarioId, String procesoId, Map<String, Object> parametros)
             throws ErrorConexionMongoException {
-    SolicitudProceso s = new SolicitudProceso(usuarioId, procesoId, parametros);
-    SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
-    return dao.insertar(s);
+        SolicitudProceso s = new SolicitudProceso(usuarioId, procesoId, parametros);
+        SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
+        return dao.insertar(s);
     }
 
     public void asignarTecnico(String solicitudId, String tecnicoId) throws ErrorConexionMongoException {
-    SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
-    dao.asignarTecnico(solicitudId, tecnicoId);
+        SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
+        dao.asignarTecnico(solicitudId, tecnicoId);
     }
 
     public void aprobarSolicitud(String solicitudId) throws ErrorConexionMongoException {
-    SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
-    dao.actualizarEstado(solicitudId, "aprobado");
+        SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
+        dao.actualizarEstado(solicitudId, "aprobado");
     }
 
     public void ejecutarSolicitud(String solicitudId) throws ErrorConexionMongoException, ErrorConexionCassandraException {
-    SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
-    SolicitudProceso s = dao.buscarPorId(solicitudId);
+        SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
+        SolicitudProceso s = dao.buscarPorId(solicitudId);
         if (s == null) throw new ErrorConexionMongoException("Solicitud no encontrada: " + solicitudId, null);
         // marcar en estado ejecucion
-    SolicitudProcesoMongoDAO dao2 = new SolicitudProcesoMongoDAO();
-    dao2.actualizarEstado(solicitudId, "en_ejecucion");
+        SolicitudProcesoMongoDAO dao2 = new SolicitudProcesoMongoDAO();
+        dao2.actualizarEstado(solicitudId, "en_ejecucion");
 
         // registrar historial en Cassandra
         HistorialEjecucion historial = new HistorialEjecucion();
@@ -163,5 +166,61 @@ public class SolicitudProcesoService {
     public void rechazarSolicitud(String solicitudId) throws ErrorConexionMongoException {
         SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
         dao.actualizarEstado(solicitudId, "rechazado");
+    }
+
+    public List<SolicitudProceso> listarPorUsuario(String usuarioId) throws ErrorConexionMongoException {
+        if (usuarioId == null || usuarioId.isBlank()) {
+            return Collections.emptyList();
+        }
+        return new SolicitudProcesoMongoDAO().listarPorUsuario(usuarioId);
+    }
+
+    public String crearSolicitudUsuario(String usuarioId, String procesoId, Map<String, Object> parametros)
+            throws ErrorConexionMongoException, ErrorConexionCassandraException {
+        Map<String, Object> params = parametros != null ? new HashMap<>(parametros) : new HashMap<>();
+        String sensorId = seleccionarSensorParaSolicitud(params);
+        if (sensorId != null && !params.containsKey("sensorId")) {
+            params.put("sensorId", sensorId);
+        }
+        return crearSolicitud(usuarioId, procesoId, params);
+    }
+
+    private String seleccionarSensorParaSolicitud(Map<String, Object> parametros) throws ErrorConexionCassandraException {
+        List<Sensor> sensores = SensorService.getInstance().listarTodos();
+        if (sensores.isEmpty()) {
+            return null;
+        }
+        Sensor candidato = null;
+        String ciudad = obtenerParametro(parametros, "ciudad");
+        String pais = obtenerParametro(parametros, "pais");
+        String tipo = obtenerParametro(parametros, "tipoSensor");
+
+        for (Sensor sensor : sensores) {
+            String estado = sensor.getEstado();
+            if (estado != null && !"ACTIVO".equalsIgnoreCase(estado)) {
+                continue;
+            }
+            if (tipo != null && sensor.getTipo() != null && !sensor.getTipo().equalsIgnoreCase(tipo)) {
+                continue;
+            }
+            if (ciudad != null && sensor.getCiudad() != null && sensor.getCiudad().equalsIgnoreCase(ciudad)) {
+                return sensor.getId();
+            }
+            if (pais != null && sensor.getPais() != null && sensor.getPais().equalsIgnoreCase(pais)) {
+                candidato = sensor;
+            } else if (candidato == null) {
+                candidato = sensor;
+            }
+        }
+        return candidato != null ? candidato.getId() : sensores.get(0).getId();
+    }
+
+    private String obtenerParametro(Map<String, Object> parametros, String clave) {
+        Object valor = parametros.get(clave);
+        if (valor instanceof String) {
+            String str = ((String) valor).trim();
+            return str.isEmpty() ? null : str;
+        }
+        return null;
     }
 }

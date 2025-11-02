@@ -40,6 +40,8 @@ public class CuentaMySQLRepository {
                 cuenta.setId(rs.getInt("id"));
                 cuenta.setUsuarioId(rs.getInt("usuario_id"));
                 cuenta.setSaldo(rs.getDouble("saldo"));
+                // Limite no está persistido; por defecto mantenemos crédito habilitado
+                cuenta.setLimite(1000.0);
                 return cuenta;
             }
         } catch (SQLException e) {

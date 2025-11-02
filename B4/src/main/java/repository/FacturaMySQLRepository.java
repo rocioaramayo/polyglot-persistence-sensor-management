@@ -64,6 +64,33 @@ public class FacturaMySQLRepository {
         return facturas;
     }
 
+    public Factura obtenerPorId(Integer facturaId) throws ErrorConexionMySQLException {
+        String sql = "SELECT * FROM facturas WHERE id = ?";
+        try (Connection conn = MySQLPool.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, facturaId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return mapearFactura(rs);
+            }
+        } catch (SQLException e) {
+            throw new ErrorConexionMySQLException("Error al obtener factura", e);
+        }
+        return null;
+    }
+
+    public void actualizarEstado(Integer facturaId, String nuevoEstado) throws ErrorConexionMySQLException {
+        String sql = "UPDATE facturas SET estado = ? WHERE id = ?";
+        try (Connection conn = MySQLPool.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, nuevoEstado);
+            stmt.setInt(2, facturaId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new ErrorConexionMySQLException("Error al actualizar estado de la factura", e);
+        }
+    }
+
     private Factura mapearFactura(ResultSet rs) throws SQLException {
         Factura factura = new Factura();
         factura.setId(rs.getInt("id"));

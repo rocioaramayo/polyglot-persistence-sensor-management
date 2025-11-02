@@ -9,7 +9,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PagoMySQLRepository {
-    
+    private static PagoMySQLRepository instance;
+
+    private PagoMySQLRepository() {}
+
+    public static PagoMySQLRepository getInstance() {
+        if (instance == null) {
+            instance = new PagoMySQLRepository();
+        }
+        return instance;
+    }
+
     public void insertar(Pago pago) throws SQLException, ErrorConexionMySQLException {
         String sql = "INSERT INTO pagos (factura_id, usuario_id, monto, fecha_pago, metodo_pago, referencia, estado) " +
                      "VALUES (?, ?, ?, ?, ?, ?, ?)";

@@ -36,6 +36,7 @@ public class ProcesoMongoDAO {
         if (doc == null) return null;
 
         Proceso proceso = new Proceso();
+        proceso.setId(id);
         proceso.setNombre(doc.getString("nombre"));
         proceso.setTipo(doc.getString("tipo"));
         proceso.setDescripcion(doc.getString("descripcion"));
@@ -50,6 +51,10 @@ public class ProcesoMongoDAO {
         List<Proceso> procesos = new ArrayList<>();
         for (Document doc : collection.find(Filters.eq("activo", true))) {
             Proceso proceso = new Proceso();
+            ObjectId objectId = doc.getObjectId("_id");
+            if (objectId != null) {
+                proceso.setId(objectId.toHexString());
+            }
             proceso.setNombre(doc.getString("nombre"));
             proceso.setTipo(doc.getString("tipo"));
             proceso.setDescripcion(doc.getString("descripcion"));
