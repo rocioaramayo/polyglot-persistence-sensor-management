@@ -91,13 +91,21 @@ public class LoginFrame extends JFrame {
                     // Iniciar simulación continua de mediciones (global)
                     services.AutoMedicionService.getInstance().start();
                     var usuario = AuthService.getInstance().validarToken(token);
-                    if (usuario != null && usuario.getRol() != null && usuario.getRol().equalsIgnoreCase("ADMINISTRADOR")) {
-                        AdminFrame admin = new AdminFrame(currentToken);
-                        admin.setVisible(true);
-                        this.dispose();
-                    } else {
-                        openDashboard();
+                    if (usuario != null && usuario.getRol() != null) {
+                        String rol = usuario.getRol().toUpperCase();
+                        if ("ADMINISTRADOR".equals(rol)) {
+                            AdminFrame admin = new AdminFrame(currentToken);
+                            admin.setVisible(true);
+                            this.dispose();
+                            return;
+                        } else if ("TECNICO".equals(rol)) {
+                            TecnicoFrame tecnico = new TecnicoFrame(currentToken);
+                            tecnico.setVisible(true);
+                            this.dispose();
+                            return;
+                        }
                     }
+                    openDashboard();
                 } catch (ErrorConexionRedisException | ErrorConexionMySQLException ex) {
                     // Si falla la validación del token, procedemos al dashboard genérico
                     openDashboard();

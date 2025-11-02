@@ -21,6 +21,8 @@ import repository.MensajeMongoDAO;
 import modelo.Mensaje;
 import modelo.Alerta;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 public class SolicitudProcesoService {
@@ -104,7 +106,9 @@ public class SolicitudProcesoService {
                 factura.setDireccionFacturacion(usuario.getDireccion());
                 factura.setTelefonoFacturacion(usuario.getTelefono());
             }
-        } catch (ErrorConexionMongoException ignore) {}
+        } catch (ErrorConexionMongoException ex) {
+            System.err.println("No se pudo obtener información adicional del usuario " + s.getUsuarioId() + ": " + ex.getMessage());
+        }
         FacturaMySQLRepository.getInstance().crear(factura);
 
         // Si tenemos un usuario numérico, actualizar cuenta y crear movimiento
@@ -143,5 +147,21 @@ public class SolicitudProcesoService {
         } catch (Exception e) {
             // si falla la notificación, no impedir el flujo principal
         }
+    }
+
+    public List<SolicitudProceso> listarPendientes() throws ErrorConexionMongoException {
+        return new SolicitudProcesoMongoDAO().listarPendientes();
+    }
+
+    public List<SolicitudProceso> listarAsignadas(String tecnicoId) throws ErrorConexionMongoException {
+        if (tecnicoId == null || tecnicoId.isBlank()) {
+            return Collections.emptyList();
+        }
+        return new SolicitudProcesoMongoDAO().listarPorTecnico(tecnicoId);
+    }
+
+    public void rechazarSolicitud(String solicitudId) throws ErrorConexionMongoException {
+        SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
+        dao.actualizarEstado(solicitudId, "rechazado");
     }
 }

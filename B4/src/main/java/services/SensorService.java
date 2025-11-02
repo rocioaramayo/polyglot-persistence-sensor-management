@@ -30,4 +30,12 @@ public class SensorService {
     public List<Sensor> obtenerSensoresPorCiudad(String ciudad) throws ErrorConexionCassandraException {
         return SensorCassandraDAO.getInstance().obtenerPorCiudad(ciudad);
     }
+
+    public List<Sensor> listarTodos() throws ErrorConexionCassandraException {
+        return SensorCassandraDAO.getInstance().listarTodos();
+    }
+
+    public void actualizarEstado(String id, String nuevoEstado) throws ErrorConexionCassandraException {
+        SensorCassandraDAO.getInstance().actualizarEstado(id, nuevoEstado);
+    }
 }
