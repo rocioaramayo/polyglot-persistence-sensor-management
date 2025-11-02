@@ -15,9 +15,11 @@ import services.SolicitudProcesoService;
 import services.UsuarioService;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,15 +33,19 @@ public class TecnicoFrame extends JFrame {
 
     private final Map<String, String> procesoCache = new HashMap<>();
     private final Map<String, String> usuarioCache = new HashMap<>();
+    private final Map<String, SolicitudProceso> solicitudCache = new HashMap<>();
 
     private DefaultTableModel pendientesModel;
     private JTable pendientesTable;
 
-    private DefaultTableModel tareasModel;
-    private JTable tareasTable;
+    private DefaultTableModel asignadasModel;
+    private JTable asignadasTable;
 
     private DefaultTableModel sensoresModel;
     private JTable sensoresTable;
+    private JComboBox<String> filtroEstadoSensores;
+    private JTextField filtroTextoSensores;
+    private final List<Sensor> sensoresCache = new ArrayList<>();
 
     public TecnicoFrame(String token) {
         this.token = token;
@@ -59,7 +65,7 @@ public class TecnicoFrame extends JFrame {
         add(container);
 
         refrescarPendientes();
-        refrescarTareas();
+        refrescarAsignadas();
         refrescarSensores();
     }
 
@@ -108,15 +114,29 @@ public class TecnicoFrame extends JFrame {
 
     private JTabbedPane crearTabs() {
         JTabbedPane tabs = new JTabbedPane();
-        tabs.addTab("Solicitudes pendientes", crearTabPendientes());
-        tabs.addTab("Mis tareas", crearTabTareasAsignadas());
+        tabs.addTab("Solicitudes", crearTabSolicitudes());
         tabs.addTab("Mantenimiento de sensores", crearTabSensores());
         return tabs;
     }
 
-    private JPanel crearTabPendientes() {
-        JPanel panel = new JPanel(new BorderLayout(8, 8));
+    private JPanel crearTabSolicitudes() {
+        JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JPanel pendientesPanel = construirPanelPendientes();
+        JPanel asignadasPanel = construirPanelAsignadas();
+
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, pendientesPanel, asignadasPanel);
+        split.setResizeWeight(0.55);
+        split.setBorder(null);
+
+        panel.add(split, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel construirPanelPendientes() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(BorderFactory.createTitledBorder("Solicitudes pendientes de toma"));
 
         pendientesModel = new DefaultTableModel(new Object[]{"ID", "Proceso", "Usuario", "Fecha", "Estado", "Asignado a"}, 0) {
             @Override
@@ -131,10 +151,13 @@ public class TecnicoFrame extends JFrame {
         panel.add(new JScrollPane(pendientesTable), BorderLayout.CENTER);
 
         JButton refrescarBtn = new JButton("Refrescar");
-        refrescarBtn.addActionListener(e -> refrescarPendientes());
+        refrescarBtn.addActionListener(e -> {
+            refrescarPendientes();
+            refrescarAsignadas();
+        });
 
-        JButton asignarBtn = new JButton("Asignarme");
-        asignarBtn.addActionListener(e -> asignarSeleccionado());
+        JButton tomarBtn = new JButton("Tomar solicitud");
+        tomarBtn.addActionListener(e -> asignarSeleccionado());
 
         JButton aprobarBtn = new JButton("Aprobar");
         aprobarBtn.addActionListener(e -> cambiarEstadoSeleccionado("aprobado"));
@@ -144,7 +167,7 @@ public class TecnicoFrame extends JFrame {
 
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         acciones.add(refrescarBtn);
-        acciones.add(asignarBtn);
+        acciones.add(tomarBtn);
         acciones.add(aprobarBtn);
         acciones.add(rechazarBtn);
         panel.add(acciones, BorderLayout.SOUTH);
@@ -152,37 +175,36 @@ public class TecnicoFrame extends JFrame {
         return panel;
     }
 
-    private JPanel crearTabTareasAsignadas() {
+    private JPanel construirPanelAsignadas() {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        panel.setBorder(BorderFactory.createTitledBorder("Mis solicitudes en progreso"));
 
-        tareasModel = new DefaultTableModel(new Object[]{"ID", "Proceso", "Estado", "Fecha", "Usuario", "Resultado"}, 0) {
+        asignadasModel = new DefaultTableModel(new Object[]{"ID", "Proceso", "Estado", "Fecha", "Usuario", "Resultado"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
-        tareasTable = new JTable(tareasModel);
-        tareasTable.setFillsViewportHeight(true);
-        tareasTable.setAutoCreateRowSorter(true);
+        asignadasTable = new JTable(asignadasModel);
+        asignadasTable.setFillsViewportHeight(true);
+        asignadasTable.setAutoCreateRowSorter(true);
 
-        panel.add(new JScrollPane(tareasTable), BorderLayout.CENTER);
+        panel.add(new JScrollPane(asignadasTable), BorderLayout.CENTER);
 
         JButton refrescarBtn = new JButton("Refrescar");
-        refrescarBtn.addActionListener(e -> refrescarTareas());
+        refrescarBtn.addActionListener(e -> refrescarAsignadas());
 
         JButton iniciarBtn = new JButton("Iniciar ejecución");
-        iniciarBtn.addActionListener(e -> ejecutarTareaSeleccionada());
+        iniciarBtn.addActionListener(e -> ejecutarAsignadaSeleccionada());
 
         JButton completarBtn = new JButton("Marcar completada");
-        completarBtn.addActionListener(e -> completarTareaSeleccionada());
+        completarBtn.addActionListener(e -> completarAsignadaSeleccionada());
 
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         acciones.add(refrescarBtn);
         acciones.add(iniciarBtn);
         acciones.add(completarBtn);
         panel.add(acciones, BorderLayout.SOUTH);
-
         return panel;
     }
 
@@ -199,8 +221,46 @@ public class TecnicoFrame extends JFrame {
         sensoresTable = new JTable(sensoresModel);
         sensoresTable.setFillsViewportHeight(true);
         sensoresTable.setAutoCreateRowSorter(true);
+        sensoresTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                String estado = (String) table.getValueAt(row, 5);
+                if ("INACTIVO".equalsIgnoreCase(estado) && !isSelected) {
+                    c.setForeground(new Color(180, 0, 0));
+                } else {
+                    c.setForeground(isSelected ? table.getSelectionForeground() : table.getForeground());
+                }
+                return c;
+            }
+        });
 
         panel.add(new JScrollPane(sensoresTable), BorderLayout.CENTER);
+
+        JPanel filtros = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        filtros.add(new JLabel("Estado:"));
+        filtroEstadoSensores = new JComboBox<>(new String[]{"Todos", "Activos", "Inactivos"});
+        filtroEstadoSensores.addActionListener(e -> aplicarFiltrosSensores());
+        filtros.add(filtroEstadoSensores);
+
+        filtros.add(new JLabel("Buscar (nombre/ciudad):"));
+        filtroTextoSensores = new JTextField(18);
+        filtroTextoSensores.addActionListener(e -> aplicarFiltrosSensores());
+        filtros.add(filtroTextoSensores);
+
+        JButton aplicarFiltroBtn = new JButton("Aplicar filtro");
+        aplicarFiltroBtn.addActionListener(e -> aplicarFiltrosSensores());
+        filtros.add(aplicarFiltroBtn);
+
+        JButton limpiarFiltroBtn = new JButton("Limpiar");
+        limpiarFiltroBtn.addActionListener(e -> {
+            filtroEstadoSensores.setSelectedIndex(0);
+            filtroTextoSensores.setText("");
+            aplicarFiltrosSensores();
+        });
+        filtros.add(limpiarFiltroBtn);
+
+        panel.add(filtros, BorderLayout.NORTH);
 
         JButton refrescarBtn = new JButton("Refrescar");
         refrescarBtn.addActionListener(e -> refrescarSensores());
@@ -225,6 +285,11 @@ public class TecnicoFrame extends JFrame {
             List<SolicitudProceso> pendientes = SolicitudProcesoService.getInstance().listarPendientes();
             pendientesModel.setRowCount(0);
             for (SolicitudProceso sp : pendientes) {
+                String asignadoId = sp.getTecnicoAsignadoId();
+                if (asignadoId != null && !asignadoId.isBlank() && !asignadoId.equals(usuarioActual.getId())) {
+                    continue;
+                }
+                solicitudCache.put(sp.getId(), sp);
                 pendientesModel.addRow(new Object[]{
                         sp.getId(),
                         obtenerNombreProceso(sp.getProcesoId()),
@@ -239,12 +304,13 @@ public class TecnicoFrame extends JFrame {
         }
     }
 
-    private void refrescarTareas() {
+    private void refrescarAsignadas() {
         try {
             List<SolicitudProceso> tareas = SolicitudProcesoService.getInstance().listarAsignadas(usuarioActual.getId());
-            tareasModel.setRowCount(0);
+            asignadasModel.setRowCount(0);
             for (SolicitudProceso sp : tareas) {
-                tareasModel.addRow(new Object[]{
+                solicitudCache.put(sp.getId(), sp);
+                asignadasModel.addRow(new Object[]{
                         sp.getId(),
                         obtenerNombreProceso(sp.getProcesoId()),
                         sp.getEstado() != null ? sp.getEstado().toUpperCase() : "-",
@@ -254,26 +320,52 @@ public class TecnicoFrame extends JFrame {
                 });
             }
         } catch (ErrorConexionMongoException e) {
-            JOptionPane.showMessageDialog(this, "No se pudieron cargar tus tareas: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "No se pudieron cargar tus solicitudes asignadas: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void refrescarSensores() {
         try {
             List<Sensor> sensores = SensorService.getInstance().listarTodos();
-            sensoresModel.setRowCount(0);
-            for (Sensor s : sensores) {
+            sensoresCache.clear();
+            sensoresCache.addAll(sensores);
+            aplicarFiltrosSensores();
+        } catch (ErrorConexionCassandraException e) {
+            JOptionPane.showMessageDialog(this, "No se pudieron cargar los sensores: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void aplicarFiltrosSensores() {
+        if (sensoresModel == null) {
+            return;
+        }
+        String estadoFiltro = filtroEstadoSensores != null ? (String) filtroEstadoSensores.getSelectedItem() : "Todos";
+        String texto = filtroTextoSensores != null ? filtroTextoSensores.getText().trim().toLowerCase() : "";
+
+        sensoresModel.setRowCount(0);
+        for (Sensor s : sensoresCache) {
+            String estado = s.getEstado() != null ? s.getEstado().toUpperCase() : "-";
+            boolean coincideEstado = true;
+            if ("Activos".equalsIgnoreCase(estadoFiltro)) {
+                coincideEstado = "ACTIVO".equalsIgnoreCase(estado);
+            } else if ("Inactivos".equalsIgnoreCase(estadoFiltro)) {
+                coincideEstado = "INACTIVO".equalsIgnoreCase(estado);
+            }
+
+            boolean coincideTexto = texto.isEmpty()
+                    || (s.getNombre() != null && s.getNombre().toLowerCase().contains(texto))
+                    || (s.getCiudad() != null && s.getCiudad().toLowerCase().contains(texto));
+
+            if (coincideEstado && coincideTexto) {
                 sensoresModel.addRow(new Object[]{
                         s.getId(),
                         s.getNombre(),
                         s.getTipo(),
                         s.getCiudad(),
                         s.getPais(),
-                        s.getEstado() != null ? s.getEstado().toUpperCase() : "-"
+                        estado
                 });
             }
-        } catch (ErrorConexionCassandraException e) {
-            JOptionPane.showMessageDialog(this, "No se pudieron cargar los sensores: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -285,11 +377,23 @@ public class TecnicoFrame extends JFrame {
         }
         int modelRow = pendientesTable.convertRowIndexToModel(row);
         String id = (String) pendientesModel.getValueAt(modelRow, 0);
+        SolicitudProceso cached = solicitudCache.get(id);
+        if (cached != null) {
+            String asignadoId = cached.getTecnicoAsignadoId();
+            if (asignadoId != null && !asignadoId.isBlank()) {
+                if (asignadoId.equals(usuarioActual.getId())) {
+                    JOptionPane.showMessageDialog(this, "Esta solicitud ya está en tu cola.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Otro técnico ya tomó esta solicitud.", "Aviso", JOptionPane.WARNING_MESSAGE);
+                }
+                return;
+            }
+        }
         try {
             SolicitudProcesoService.getInstance().asignarTecnico(id, usuarioActual.getId());
-            JOptionPane.showMessageDialog(this, "Solicitud asignada a tu cola.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Solicitud añadida a tu cola de trabajo.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             refrescarPendientes();
-            refrescarTareas();
+            refrescarAsignadas();
         } catch (ErrorConexionMongoException e) {
             JOptionPane.showMessageDialog(this, "No se pudo asignar la solicitud: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
@@ -303,8 +407,17 @@ public class TecnicoFrame extends JFrame {
         }
         int modelRow = pendientesTable.convertRowIndexToModel(row);
         String id = (String) pendientesModel.getValueAt(modelRow, 0);
-        String asignado = (String) pendientesModel.getValueAt(modelRow, 5);
-        if (!"-".equals(asignado) && !asignado.equals(obtenerNombreUsuario(usuarioActual.getId()))) {
+        SolicitudProceso sp = solicitudCache.get(id);
+        if (sp == null) {
+            JOptionPane.showMessageDialog(this, "No se pudo localizar la solicitud seleccionada.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        String asignadoId = sp.getTecnicoAsignadoId();
+        if (asignadoId == null || asignadoId.isBlank()) {
+            JOptionPane.showMessageDialog(this, "Tomá la solicitud antes de cambiar su estado.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (!asignadoId.equals(usuarioActual.getId())) {
             JOptionPane.showMessageDialog(this, "La solicitud está asignada a otro técnico.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -316,7 +429,7 @@ public class TecnicoFrame extends JFrame {
             }
             JOptionPane.showMessageDialog(this, "Estado actualizado.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             refrescarPendientes();
-            refrescarTareas();
+            refrescarAsignadas();
         } catch (ErrorConexionMongoException e) {
             JOptionPane.showMessageDialog(this, "No se pudo actualizar el estado: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
@@ -326,46 +439,66 @@ public class TecnicoFrame extends JFrame {
         cambiarEstadoSeleccionado("rechazado");
     }
 
-    private void ejecutarTareaSeleccionada() {
-        int row = tareasTable.getSelectedRow();
+    private void ejecutarAsignadaSeleccionada() {
+        int row = asignadasTable.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Seleccione una tarea.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Seleccione una solicitud.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        int modelRow = tareasTable.convertRowIndexToModel(row);
-        String id = (String) tareasModel.getValueAt(modelRow, 0);
-        String estado = (String) tareasModel.getValueAt(modelRow, 2);
+        int modelRow = asignadasTable.convertRowIndexToModel(row);
+        String id = (String) asignadasModel.getValueAt(modelRow, 0);
+        String estado = (String) asignadasModel.getValueAt(modelRow, 2);
+        SolicitudProceso sp = solicitudCache.get(id);
+        if (sp == null) {
+            JOptionPane.showMessageDialog(this, "No se pudo localizar la solicitud seleccionada.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (sp.getTecnicoAsignadoId() == null || !sp.getTecnicoAsignadoId().equals(usuarioActual.getId())) {
+            JOptionPane.showMessageDialog(this, "La solicitud ya no está asignada a tu usuario.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            refrescarAsignadas();
+            return;
+        }
         if (!"APROBADO".equalsIgnoreCase(estado)) {
-            JOptionPane.showMessageDialog(this, "La tarea debe estar en estado APROBADO para iniciar la ejecución.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "La solicitud debe estar en estado APROBADO para iniciar la ejecución.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
         try {
             SolicitudProcesoService.getInstance().ejecutarSolicitud(id);
             JOptionPane.showMessageDialog(this, "Solicitud en ejecución.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
-            refrescarTareas();
+            refrescarAsignadas();
             refrescarPendientes();
         } catch (ErrorConexionMongoException | ErrorConexionCassandraException e) {
             JOptionPane.showMessageDialog(this, "No se pudo iniciar la ejecución: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void completarTareaSeleccionada() {
-        int row = tareasTable.getSelectedRow();
+    private void completarAsignadaSeleccionada() {
+        int row = asignadasTable.getSelectedRow();
         if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Seleccione una tarea.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Seleccione una solicitud.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        int modelRow = tareasTable.convertRowIndexToModel(row);
-        String id = (String) tareasModel.getValueAt(modelRow, 0);
-        String estado = (String) tareasModel.getValueAt(modelRow, 2);
+        int modelRow = asignadasTable.convertRowIndexToModel(row);
+        String id = (String) asignadasModel.getValueAt(modelRow, 0);
+        String estado = (String) asignadasModel.getValueAt(modelRow, 2);
+        SolicitudProceso sp = solicitudCache.get(id);
+        if (sp == null) {
+            JOptionPane.showMessageDialog(this, "No se pudo localizar la solicitud seleccionada.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (sp.getTecnicoAsignadoId() == null || !sp.getTecnicoAsignadoId().equals(usuarioActual.getId())) {
+            JOptionPane.showMessageDialog(this, "La solicitud ya no está asignada a tu usuario.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            refrescarAsignadas();
+            return;
+        }
         if (!"EN_EJECUCION".equalsIgnoreCase(estado)) {
-            JOptionPane.showMessageDialog(this, "La tarea debe estar en ejecución para marcarla como completada.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "La solicitud debe estar en ejecución para marcarla como completada.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
         try {
             SolicitudProcesoService.getInstance().completarSolicitud(id);
             JOptionPane.showMessageDialog(this, "Solicitud completada. Se generó la facturación correspondiente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
-            refrescarTareas();
+            refrescarAsignadas();
             refrescarPendientes();
         } catch (ErrorConexionMongoException | ErrorConexionMySQLException e) {
             JOptionPane.showMessageDialog(this, "No se pudo completar la solicitud: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
