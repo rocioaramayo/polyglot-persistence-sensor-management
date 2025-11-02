@@ -43,6 +43,10 @@ public class AutoMedicionService {
         try {
             List<Sensor> sensores = SensorCassandraDAO.getInstance().listarTodos();
             for (Sensor s : sensores) {
+                String estado = s.getEstado();
+                if (estado != null && !"ACTIVO".equalsIgnoreCase(estado)) {
+                    continue; // sensor deshabilitado en Cassandra
+                }
                 // Simular según tipo de sensor; otros campos quedan en null
                 String tipo = s.getTipo() != null ? s.getTipo().toLowerCase() : "temperatura";
                 Double t = null;
