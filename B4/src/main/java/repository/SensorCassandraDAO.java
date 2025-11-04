@@ -6,6 +6,10 @@ import exceptions.ErrorConexionCassandraException;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -28,12 +32,32 @@ public class SensorCassandraDAO {
             String id = UUID.randomUUID().toString();
             sensor.setId(id);
 
-            String cql = "INSERT INTO sensores (id, nombre, tipo_sensor, latitud, longitud, ciudad, pais, estado, fecha_inicio_emision) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, toTimestamp(now()))";
+            LocalDateTime fechaInicio = sensor.getFechaInicio() != null ? sensor.getFechaInicio() : LocalDateTime.now();
+            LocalDateTime fechaInstalacion = sensor.getFechaInstalacion() != null ? sensor.getFechaInstalacion() : fechaInicio;
+            LocalDateTime ultimaActualizacion = sensor.getUltimaActualizacion() != null ? sensor.getUltimaActualizacion() : LocalDateTime.now();
 
-            session.execute(cql, id, sensor.getNombre(), sensor.getTipo(),
-                    sensor.getLatitud(), sensor.getLongitud(), sensor.getCiudad(),
-                    sensor.getPais(), sensor.getEstado());
+            Instant inicio = fechaInicio.atZone(ZoneId.systemDefault()).toInstant();
+            Instant instalacion = fechaInstalacion.atZone(ZoneId.systemDefault()).toInstant();
+            Instant ultima = ultimaActualizacion.atZone(ZoneId.systemDefault()).toInstant();
+
+            String cql = "INSERT INTO sensores (id, nombre, codigo, tipo_sensor, latitud, longitud, ciudad, zona, pais, estado, fecha_inicio_emision, fecha_instalacion, ultima_actualizacion, observaciones) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            session.execute(cql,
+                    id,
+                    sensor.getNombre(),
+                    sensor.getCodigo(),
+                    sensor.getTipo(),
+                    sensor.getLatitud(),
+                    sensor.getLongitud(),
+                    sensor.getCiudad(),
+                    sensor.getZona(),
+                    sensor.getPais(),
+                    sensor.getEstado(),
+                    inicio,
+                    instalacion,
+                    ultima,
+                    sensor.getObservaciones());
         } catch (Exception e) {
             throw new ErrorConexionCassandraException("Error al crear sensor", e);
         }
@@ -88,20 +112,35 @@ public class SensorCassandraDAO {
         Sensor sensor = new Sensor();
         sensor.setId(row.getString("id"));
         sensor.setNombre(row.getString("nombre"));
+        sensor.setCodigo(row.getString("codigo"));
         // El esquema usa columna tipo_sensor
         sensor.setTipo(row.getString("tipo_sensor"));
         sensor.setLatitud(row.getDouble("latitud"));
         sensor.setLongitud(row.getDouble("longitud"));
         sensor.setCiudad(row.getString("ciudad"));
+        sensor.setZona(row.getString("zona"));
         sensor.setPais(row.getString("pais"));
         sensor.setEstado(row.getString("estado"));
+        Instant inicio = row.getInstant("fecha_inicio_emision");
+        if (inicio != null) {
+            sensor.setFechaInicio(LocalDateTime.ofInstant(inicio, ZoneId.systemDefault()));
+        }
+        Instant instalacion = row.getInstant("fecha_instalacion");
+        if (instalacion != null) {
+            sensor.setFechaInstalacion(LocalDateTime.ofInstant(instalacion, ZoneId.systemDefault()));
+        }
+        Instant ultima = row.getInstant("ultima_actualizacion");
+        if (ultima != null) {
+            sensor.setUltimaActualizacion(LocalDateTime.ofInstant(ultima, ZoneId.systemDefault()));
+        }
+        sensor.setObservaciones(row.getString("observaciones"));
         return sensor;
     }
 
     public void actualizarEstado(String id, String nuevoEstado) throws ErrorConexionCassandraException {
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
-            String cql = "UPDATE sensores SET estado = ? WHERE id = ?";
+            String cql = "UPDATE sensores SET estado = ?, ultima_actualizacion = toTimestamp(now()) WHERE id = ?";
             session.execute(cql, nuevoEstado, id);
         } catch (Exception e) {
             throw new ErrorConexionCassandraException("Error al actualizar estado del sensor", e);

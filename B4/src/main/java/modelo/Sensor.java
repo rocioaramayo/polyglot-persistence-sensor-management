@@ -5,30 +5,22 @@ import java.time.LocalDateTime;
 public class Sensor {
     private String id;
     private String nombre;
+    private String codigo;
     private String tipo; // temperatura, humedad
     private Double latitud;
     private Double longitud;
     private String ciudad;
+    private String zona;
     private String pais;
     private String ubicacion;
     private String estado; // activo, inactivo, falla
     private LocalDateTime fechaInicio;
     private LocalDateTime fechaInstalacion;
+    private LocalDateTime ultimaActualizacion;
+    private String observaciones;
     private Boolean activo;
 
     public Sensor() {}
-
-    public Sensor(String nombre, String tipo, Double latitud, Double longitud, 
-                  String ciudad, String pais) {
-        this.nombre = nombre;
-        this.tipo = tipo;
-        this.latitud = latitud;
-        this.longitud = longitud;
-        this.ciudad = ciudad;
-        this.pais = pais;
-        this.estado = "activo";
-        this.fechaInicio = LocalDateTime.now();
-    }
 
     // Getters y Setters
     public String getId() { return id; }
@@ -36,6 +28,9 @@ public class Sensor {
 
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
+
+    public String getCodigo() { return codigo; }
+    public void setCodigo(String codigo) { this.codigo = codigo; }
 
     public String getTipo() { return tipo; }
     public void setTipo(String tipo) { this.tipo = tipo; }
@@ -48,6 +43,9 @@ public class Sensor {
 
     public String getCiudad() { return ciudad; }
     public void setCiudad(String ciudad) { this.ciudad = ciudad; }
+
+    public String getZona() { return zona; }
+    public void setZona(String zona) { this.zona = zona; }
 
     public String getPais() { return pais; }
     public void setPais(String pais) { this.pais = pais; }
@@ -63,6 +61,12 @@ public class Sensor {
 
     public LocalDateTime getFechaInstalacion() { return fechaInstalacion; }
     public void setFechaInstalacion(LocalDateTime fechaInstalacion) { this.fechaInstalacion = fechaInstalacion; }
+
+    public LocalDateTime getUltimaActualizacion() { return ultimaActualizacion; }
+    public void setUltimaActualizacion(LocalDateTime ultimaActualizacion) { this.ultimaActualizacion = ultimaActualizacion; }
+
+    public String getObservaciones() { return observaciones; }
+    public void setObservaciones(String observaciones) { this.observaciones = observaciones; }
 
     public Boolean getActivo() { return activo; }
     public void setActivo(Boolean activo) { this.activo = activo; }

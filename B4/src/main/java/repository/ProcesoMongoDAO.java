@@ -25,58 +25,79 @@ public class ProcesoMongoDAO {
                 .append("tipo", proceso.getTipo())
                 .append("descripcion", proceso.getDescripcion())
                 .append("costo", proceso.getCosto())
-                .append("activo", true);
+                .append("activo", proceso.getActivo() == null ? Boolean.TRUE : proceso.getActivo());
         
         collection.insertOne(doc);
         return doc.getObjectId("_id").toString();
     }
 
     public Proceso buscarPorId(String id) {
-        Document doc = collection.find(Filters.eq("_id", new ObjectId(id))).first();
-        if (doc == null) return null;
-
-        Proceso proceso = new Proceso();
-        proceso.setId(id);
-        proceso.setNombre(doc.getString("nombre"));
-        proceso.setTipo(doc.getString("tipo"));
-        proceso.setDescripcion(doc.getString("descripcion"));
-        proceso.setCosto(doc.getDouble("costo"));
-        if (doc.containsKey("activo")) {
-            proceso.setActivo(doc.getBoolean("activo", true));
+        if (id == null || id.isBlank()) {
+            return null;
         }
-        return proceso;
+        Document doc = collection.find(Filters.eq("_id", new ObjectId(id))).first();
+        return mapToProceso(doc);
+    }
+
+    public Proceso buscarPorNombre(String nombre) {
+        if (nombre == null || nombre.isBlank()) {
+            return null;
+        }
+        Document doc = collection.find(Filters.eq("nombre", nombre)).first();
+        return mapToProceso(doc);
     }
 
     public List<Proceso> listarActivos() {
         List<Proceso> procesos = new ArrayList<>();
         for (Document doc : collection.find(Filters.eq("activo", true))) {
-            Proceso proceso = new Proceso();
-            ObjectId objectId = doc.getObjectId("_id");
-            if (objectId != null) {
-                proceso.setId(objectId.toHexString());
+            Proceso proceso = mapToProceso(doc);
+            if (proceso != null) {
+                procesos.add(proceso);
             }
-            proceso.setNombre(doc.getString("nombre"));
-            proceso.setTipo(doc.getString("tipo"));
-            proceso.setDescripcion(doc.getString("descripcion"));
-            proceso.setCosto(doc.getDouble("costo"));
-            if (doc.containsKey("activo")) {
-                proceso.setActivo(doc.getBoolean("activo", true));
-            }
-            procesos.add(proceso);
         }
         return procesos;
     }
 
     public void actualizar(String id, Proceso proceso) {
+        if (id == null || id.isBlank() || proceso == null) {
+            return;
+        }
         Document update = new Document()
                 .append("nombre", proceso.getNombre())
                 .append("tipo", proceso.getTipo())
                 .append("descripcion", proceso.getDescripcion())
                 .append("costo", proceso.getCosto());
+        if (proceso.getActivo() != null) {
+            update.append("activo", proceso.getActivo());
+        }
         
         collection.updateOne(
                 Filters.eq("_id", new ObjectId(id)),
                 new Document("$set", update)
         );
+    }
+
+    private Proceso mapToProceso(Document doc) {
+        if (doc == null) {
+            return null;
+        }
+        Proceso proceso = new Proceso();
+        ObjectId objectId = doc.getObjectId("_id");
+        if (objectId != null) {
+            proceso.setId(objectId.toHexString());
+        }
+        proceso.setNombre(doc.getString("nombre"));
+        proceso.setTipo(doc.getString("tipo"));
+        proceso.setDescripcion(doc.getString("descripcion"));
+        if (doc.containsKey("costo")) {
+            Object costoObj = doc.get("costo");
+            if (costoObj instanceof Number) {
+                proceso.setCosto(((Number) costoObj).doubleValue());
+            }
+        }
+        if (doc.containsKey("activo")) {
+            proceso.setActivo(doc.getBoolean("activo", true));
+        }
+        return proceso;
     }
 }

@@ -2,6 +2,7 @@ package ui;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
 import services.*;
 import modelo.*;
 import exceptions.*;
@@ -122,6 +123,12 @@ public class DashboardFrame extends JFrame {
         JTable tabla = new JTable(model);
         tabla.setFillsViewportHeight(true);
         tabla.setAutoCreateRowSorter(true);
+        tabla.setRowHeight(48);
+        tabla.getColumnModel().getColumn(0).setPreferredWidth(220);
+        tabla.getColumnModel().getColumn(1).setPreferredWidth(150);
+        tabla.getColumnModel().getColumn(2).setPreferredWidth(110);
+        tabla.getColumnModel().getColumn(3).setPreferredWidth(360);
+        tabla.getColumnModel().getColumn(3).setCellRenderer(new DescripcionCellRenderer());
 
         if (procesosDisponibles != null && !procesosDisponibles.isEmpty()) {
             for (Proceso proceso : procesosDisponibles) {
@@ -140,6 +147,34 @@ public class DashboardFrame extends JFrame {
         panel.add(new JScrollPane(tabla), BorderLayout.CENTER);
 
         return panel;
+    }
+    private static class DescripcionCellRenderer extends JTextArea implements TableCellRenderer {
+        DescripcionCellRenderer() {
+            setLineWrap(true);
+            setWrapStyleWord(true);
+            setOpaque(true);
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            String texto = value == null ? "" : value.toString();
+            setText(texto);
+            setFont(table.getFont());
+            if (isSelected) {
+                setForeground(table.getSelectionForeground());
+                setBackground(table.getSelectionBackground());
+            } else {
+                setForeground(table.getForeground());
+                setBackground(table.getBackground());
+            }
+            setSize(table.getColumnModel().getColumn(column).getWidth(), Short.MAX_VALUE);
+            int preferred = getPreferredSize().height;
+            int baseHeight = Math.max(48, preferred);
+            if (table.getRowHeight(row) != baseHeight) {
+                table.setRowHeight(row, baseHeight);
+            }
+            return this;
+        }
     }
 
     private JPanel crearPanelMensajeria() {

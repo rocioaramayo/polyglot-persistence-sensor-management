@@ -2,10 +2,8 @@ package ui;
 
 import exceptions.ErrorConexionMongoException;
 import modelo.Alerta;
-import modelo.Proceso;
 import modelo.Usuario;
 import repository.AlertaMongoDAO;
-import repository.ProcesoMongoDAO;
 import repository.UsuarioMongoDAO;
 
 import javax.swing.*;
@@ -26,7 +24,6 @@ public class AdminFrame extends JFrame {
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Sensores", crearPanelSensores());
         tabs.addTab("Técnicos", crearPanelTecnicos());
-        tabs.addTab("Procesos", crearPanelProcesos());
         tabs.addTab("Alertas", crearPanelAlertas());
 
         JPanel header = new JPanel(new BorderLayout());
@@ -56,28 +53,52 @@ public class AdminFrame extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         JTextField nombreField = new JTextField(16);
+        JTextField codigoField = new JTextField(12);
         JComboBox<String> tipoCombo = new JComboBox<>(new String[]{"temperatura","humedad"});
         JTextField latField = new JTextField(8);
         JTextField lonField = new JTextField(8);
         JTextField ciudadField = new JTextField(12);
+        JTextField zonaField = new JTextField(12);
         JTextField paisField = new JTextField(12);
+        JComboBox<String> estadoCombo = new JComboBox<>(new String[]{"ACTIVO","INACTIVO","MANTENIMIENTO"});
+        JTextField fechaInstField = new JTextField(12);
+        JTextArea observacionesArea = new JTextArea(3, 24);
+        observacionesArea.setLineWrap(true);
+        observacionesArea.setWrapStyleWord(true);
 
         gbc.gridx=0; gbc.gridy=0; alta.add(new JLabel("Nombre:"), gbc);
         gbc.gridx=1; alta.add(nombreField, gbc);
-        gbc.gridx=2; alta.add(new JLabel("Tipo:"), gbc);
-        gbc.gridx=3; alta.add(tipoCombo, gbc);
+        gbc.gridx=2; alta.add(new JLabel("Código:"), gbc);
+        gbc.gridx=3; alta.add(codigoField, gbc);
 
-        gbc.gridx=0; gbc.gridy=1; alta.add(new JLabel("Latitud:"), gbc);
+        gbc.gridx=0; gbc.gridy=1; alta.add(new JLabel("Tipo:"), gbc);
+        gbc.gridx=1; alta.add(tipoCombo, gbc);
+        gbc.gridx=2; alta.add(new JLabel("Estado:"), gbc);
+        gbc.gridx=3; alta.add(estadoCombo, gbc);
+
+        gbc.gridx=0; gbc.gridy=2; alta.add(new JLabel("Latitud:"), gbc);
         gbc.gridx=1; alta.add(latField, gbc);
         gbc.gridx=2; alta.add(new JLabel("Longitud:"), gbc);
         gbc.gridx=3; alta.add(lonField, gbc);
 
-        gbc.gridx=0; gbc.gridy=2; alta.add(new JLabel("Ciudad:"), gbc);
+        gbc.gridx=0; gbc.gridy=3; alta.add(new JLabel("Ciudad:"), gbc);
         gbc.gridx=1; alta.add(ciudadField, gbc);
-        gbc.gridx=2; alta.add(new JLabel("Pais:"), gbc);
-        gbc.gridx=3; alta.add(paisField, gbc);
+        gbc.gridx=2; alta.add(new JLabel("Zona:"), gbc);
+        gbc.gridx=3; alta.add(zonaField, gbc);
 
-        gbc.gridx=0; gbc.gridy=3; gbc.gridwidth=4; gbc.anchor = GridBagConstraints.EAST; gbc.fill = GridBagConstraints.NONE;
+        gbc.gridx=0; gbc.gridy=4; alta.add(new JLabel("Pais:"), gbc);
+        gbc.gridx=1; alta.add(paisField, gbc);
+        gbc.gridx=2; alta.add(new JLabel("Fecha instalación (AAAA-MM-DD):"), gbc);
+        gbc.gridx=3; alta.add(fechaInstField, gbc);
+
+        gbc.gridx=0; gbc.gridy=5; alta.add(new JLabel("Observaciones:"), gbc);
+        gbc.gridx=1; gbc.gridwidth=3;
+        gbc.fill = GridBagConstraints.BOTH;
+        alta.add(new JScrollPane(observacionesArea), gbc);
+        gbc.gridwidth=1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        gbc.gridx=0; gbc.gridy=6; gbc.gridwidth=4; gbc.anchor = GridBagConstraints.EAST; gbc.fill = GridBagConstraints.NONE;
         JButton crearBtn = new JButton("Crear");
         alta.add(crearBtn, gbc);
 
@@ -95,15 +116,50 @@ public class AdminFrame extends JFrame {
                 double lat = Double.parseDouble(latField.getText().trim());
                 double lon = Double.parseDouble(lonField.getText().trim());
                 String ciudad = ciudadField.getText().trim();
+                String zona = zonaField.getText().trim();
                 String pais = paisField.getText().trim();
+                String codigo = codigoField.getText().trim();
+                String estado = (String) estadoCombo.getSelectedItem();
+                String fechaInstStr = fechaInstField.getText().trim();
+                String observaciones = observacionesArea.getText().trim();
                 if (nombre.isEmpty() || ciudad.isEmpty() || pais.isEmpty()) {
-                    JOptionPane.showMessageDialog(this, "Complete nombre/ciudad/Pais", "Error", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Complete nombre/ciudad/pais", "Error", JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-                services.SensorService.getInstance().crearSensor(nombre, tipo, lat, lon, ciudad, pais);
+                java.time.LocalDate fechaInstalacion = null;
+                if (!fechaInstStr.isEmpty()) {
+                    try {
+                        fechaInstalacion = java.time.LocalDate.parse(fechaInstStr);
+                    } catch (java.time.format.DateTimeParseException dte) {
+                        JOptionPane.showMessageDialog(this, "Fecha con formato inválido (use AAAA-MM-DD)", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                }
+                services.SensorService.getInstance().crearSensor(
+                        nombre,
+                        codigo.isEmpty() ? null : codigo,
+                        tipo,
+                        lat,
+                        lon,
+                        ciudad,
+                        zona.isEmpty() ? null : zona,
+                        pais,
+                        estado,
+                        fechaInstalacion,
+                        observaciones.isEmpty() ? null : observaciones
+                );
                 // No es necesario setear flag: por defecto queda ACTIVA si no hay registro en Mongo
                 JOptionPane.showMessageDialog(this, "Sensor creado (extracción ACTIVA por defecto)", "OK", JOptionPane.INFORMATION_MESSAGE);
-                nombreField.setText(""); latField.setText(""); lonField.setText(""); ciudadField.setText(""); paisField.setText("");
+                nombreField.setText("");
+                codigoField.setText("");
+                latField.setText("");
+                lonField.setText("");
+                ciudadField.setText("");
+                zonaField.setText("");
+                paisField.setText("");
+                estadoCombo.setSelectedIndex(0);
+                fechaInstField.setText("");
+                observacionesArea.setText("");
                 cargarSensores(model);
             } catch (NumberFormatException nfe) {
                 JOptionPane.showMessageDialog(this, "Lat/Long deben ser numéricos", "Error", JOptionPane.ERROR_MESSAGE);
@@ -264,78 +320,6 @@ public class AdminFrame extends JFrame {
             }
         } catch (ErrorConexionMongoException e) {
             JOptionPane.showMessageDialog(this, "No se pudo cargar técnicos: "+e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private JPanel crearPanelProcesos() {
-        JPanel panel = new JPanel(new BorderLayout(10,10));
-        panel.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
-
-        JPanel alta = new JPanel(new GridBagLayout());
-        alta.setBorder(BorderFactory.createTitledBorder("Alta de Proceso"));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5,5,5,5);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-
-        JTextField nombreField = new JTextField(18);
-        JTextField tipoField = new JTextField(18);
-        JTextField costoField = new JTextField(10);
-        JTextField descField = new JTextField(24);
-
-        gbc.gridx=0; gbc.gridy=0; alta.add(new JLabel("Nombre:"), gbc);
-        gbc.gridx=1; alta.add(nombreField, gbc);
-        gbc.gridx=0; gbc.gridy=1; alta.add(new JLabel("Tipo:"), gbc);
-        gbc.gridx=1; alta.add(tipoField, gbc);
-        gbc.gridx=0; gbc.gridy=2; alta.add(new JLabel("Costo:"), gbc);
-        gbc.gridx=1; alta.add(costoField, gbc);
-        gbc.gridx=0; gbc.gridy=3; alta.add(new JLabel("Descripción:"), gbc);
-        gbc.gridx=1; alta.add(descField, gbc);
-        gbc.gridx=0; gbc.gridy=4; gbc.gridwidth=2; gbc.anchor = GridBagConstraints.EAST; gbc.fill = GridBagConstraints.NONE;
-        JButton crearBtn = new JButton("Crear Proceso");
-        alta.add(crearBtn, gbc);
-
-        DefaultTableModel model = new DefaultTableModel(new Object[]{"Nombre","Tipo","Costo","Activo"},0){
-            @Override public boolean isCellEditable(int r,int c){return false;}
-        };
-        JTable table = new JTable(model);
-
-        crearBtn.addActionListener(e -> {
-            String nombre = nombreField.getText().trim();
-            String tipo = tipoField.getText().trim();
-            String desc = descField.getText().trim();
-            Double costo;
-            try { costo = Double.parseDouble(costoField.getText().trim()); } catch(Exception ex){ costo = 0.0; }
-            if (nombre.isEmpty() || tipo.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Completa nombre y tipo", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            try {
-                Proceso p = new Proceso(nombre, desc, tipo, costo);
-                new ProcesoMongoDAO().insertar(p);
-                JOptionPane.showMessageDialog(this, "Proceso creado", "Info", JOptionPane.INFORMATION_MESSAGE);
-                nombreField.setText(""); tipoField.setText(""); costoField.setText(""); descField.setText("");
-                cargarProcesos(model);
-            } catch (ErrorConexionMongoException ex) {
-                JOptionPane.showMessageDialog(this, "Error: "+ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        cargarProcesos(model);
-
-        panel.add(alta, BorderLayout.NORTH);
-        panel.add(new JScrollPane(table), BorderLayout.CENTER);
-        return panel;
-    }
-
-    private void cargarProcesos(DefaultTableModel model) {
-        try {
-            List<Proceso> procesos = new ProcesoMongoDAO().listarActivos();
-            model.setRowCount(0);
-            for (Proceso p : procesos) {
-                model.addRow(new Object[]{p.getNombre(), p.getTipo(), p.getCosto(), p.getActivo()});
-            }
-        } catch (ErrorConexionMongoException e) {
-            JOptionPane.showMessageDialog(this, "No se pudieron cargar procesos: "+e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
