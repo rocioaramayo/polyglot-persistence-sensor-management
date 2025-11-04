@@ -77,13 +77,13 @@ public class SolicitudProcesoService {
     }
 
     public void completarSolicitud(String solicitudId) throws ErrorConexionMongoException, ErrorConexionMySQLException {
-    SolicitudProcesoMongoDAO dao3 = new SolicitudProcesoMongoDAO();
-    SolicitudProceso s = dao3.buscarPorId(solicitudId);
+        SolicitudProcesoMongoDAO dao3 = new SolicitudProcesoMongoDAO();
+        SolicitudProceso s = dao3.buscarPorId(solicitudId);
         if (s == null) throw new ErrorConexionMongoException("Solicitud no encontrada: " + solicitudId, null);
 
         // marcar completada
-    SolicitudProcesoMongoDAO dao4 = new SolicitudProcesoMongoDAO();
-    dao4.actualizarEstado(solicitudId, "completado");
+        SolicitudProcesoMongoDAO dao4 = new SolicitudProcesoMongoDAO();
+        dao4.actualizarEstado(solicitudId, "completado");
 
         // generar factura en MySQL basada en el costo del proceso
         Proceso proceso = null;
@@ -92,6 +92,30 @@ public class SolicitudProcesoService {
             proceso = pm.buscarPorId(s.getProcesoId());
         } catch (Exception e) {
             // si no se puede obtener proceso, usamos monto por defecto
+        }
+
+        String resultadoGenerado = null;
+        String observacionesGeneradas = null;
+        if (proceso != null) {
+            try {
+                ProcesoEjecucionService.ProcesoResultado resumen =
+                        ProcesoEjecucionService.getInstance().generarResultado(proceso, s);
+                if (resumen != null) {
+                    resultadoGenerado = resumen.getResultado();
+                    observacionesGeneradas = resumen.getObservaciones();
+                }
+            } catch (ErrorConexionCassandraException | ErrorConexionMongoException ex) {
+                System.err.println("No se pudo generar informe para la solicitud " + solicitudId + ": " + ex.getMessage());
+                observacionesGeneradas = "No se pudo generar el informe automático: " + ex.getMessage();
+            }
+        } else {
+            observacionesGeneradas = "No se encontró la definición del proceso asociado (" + s.getProcesoId() + ").";
+        }
+
+        if (resultadoGenerado != null || observacionesGeneradas != null) {
+            dao4.actualizarResultado(solicitudId, resultadoGenerado, observacionesGeneradas);
+            s.setResultado(resultadoGenerado);
+            s.setObservaciones(observacionesGeneradas);
         }
 
         Double monto = proceso != null && proceso.getCosto() != null ? proceso.getCosto() : 0.0;

@@ -937,6 +937,16 @@ public class DashboardFrame extends JFrame {
             for (SolicitudProceso sp : solicitudes) {
                 Map<String, Object> params = sp.getParametros();
                 String sensor = extraerParametro(params, "sensorId");
+                String detalleResultado = "";
+                if (sp.getResultado() != null && !sp.getResultado().isBlank()) {
+                    detalleResultado = sp.getResultado();
+                }
+                if (sp.getObservaciones() != null && !sp.getObservaciones().isBlank()) {
+                    if (!detalleResultado.isBlank()) {
+                        detalleResultado += "\n";
+                    }
+                    detalleResultado += "Notas: " + sp.getObservaciones();
+                }
                 solicitudesModel.addRow(new Object[]{
                         sp.getId(),
                         obtenerNombreProceso(sp.getProcesoId()),
@@ -944,7 +954,7 @@ public class DashboardFrame extends JFrame {
                         sp.getTecnicoAsignadoId() != null ? obtenerNombreUsuario(sp.getTecnicoAsignadoId()) : "-",
                         sensor != null ? sensor : "-",
                         sp.getFechaSolicitud() != null ? MENSAJE_FORMATO.format(sp.getFechaSolicitud()) : "-",
-                        sp.getResultado() != null ? sp.getResultado() : ""
+                        detalleResultado
                 });
             }
         } catch (ErrorConexionMongoException ex) {

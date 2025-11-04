@@ -6,6 +6,9 @@ import exceptions.ErrorConexionCassandraException;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -57,6 +60,36 @@ public class MedicionCassandraDAO {
         return mediciones;
     }
 
+    public List<Medicion> obtenerPorSensor(String sensorId, Instant fechaInicio, Instant fechaFin, int limite)
+            throws ErrorConexionCassandraException {
+        List<Medicion> mediciones = new ArrayList<>();
+        if (limite <= 0) {
+            limite = 500;
+        }
+        try {
+            CqlSession session = CassandraPool.getInstance().getSession();
+            StringBuilder cql = new StringBuilder("SELECT * FROM mediciones WHERE sensor_id = ?");
+            List<Object> params = new ArrayList<>();
+            params.add(sensorId);
+            if (fechaInicio != null) {
+                cql.append(" AND fecha >= ?");
+                params.add(fechaInicio);
+            }
+            if (fechaFin != null) {
+                cql.append(" AND fecha <= ?");
+                params.add(fechaFin);
+            }
+            cql.append(" LIMIT ").append(limite);
+            ResultSet rs = session.execute(cql.toString(), params.toArray());
+            for (Row row : rs) {
+                mediciones.add(mapearMedicion(row));
+            }
+        } catch (Exception e) {
+            throw new ErrorConexionCassandraException("Error al obtener mediciones por rango", e);
+        }
+        return mediciones;
+    }
+
     public List<Medicion> obtenerUltimas(int cantidad) throws ErrorConexionCassandraException {
         List<Medicion> mediciones = new ArrayList<>();
         try {
@@ -78,6 +111,10 @@ public class MedicionCassandraDAO {
         medicion.setSensorId(row.getString("sensor_id"));
         medicion.setTemperatura(row.getDouble("temperatura"));
         medicion.setHumedad(row.getDouble("humedad"));
+        Instant fecha = row.getInstant("fecha");
+        if (fecha != null) {
+            medicion.setFechaHora(LocalDateTime.ofInstant(fecha, ZoneId.systemDefault()));
+        }
         return medicion;
     }
 }

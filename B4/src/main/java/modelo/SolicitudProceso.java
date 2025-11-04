@@ -13,6 +13,7 @@ public class SolicitudProceso {
     private String estado; // pendiente, aprobado, en_ejecucion, completado, rechazado
     private Map<String, Object> parametros; // Cambiado de String a Map para facilitar manejo
     private String resultado; // Resultado del proceso ejecutado
+    private String observaciones; // Observaciones adicionales del técnico/proceso
 
     public SolicitudProceso() {
         this.parametros = new HashMap<>();
@@ -50,4 +51,7 @@ public class SolicitudProceso {
 
     public String getResultado() { return resultado; }
     public void setResultado(String resultado) { this.resultado = resultado; }
+
+    public String getObservaciones() { return observaciones; }
+    public void setObservaciones(String observaciones) { this.observaciones = observaciones; }
 }

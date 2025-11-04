@@ -310,13 +310,23 @@ public class TecnicoFrame extends JFrame {
             asignadasModel.setRowCount(0);
             for (SolicitudProceso sp : tareas) {
                 solicitudCache.put(sp.getId(), sp);
+                String detalle = "";
+                if (sp.getResultado() != null && !sp.getResultado().isBlank()) {
+                    detalle = sp.getResultado();
+                }
+                if (sp.getObservaciones() != null && !sp.getObservaciones().isBlank()) {
+                    if (!detalle.isBlank()) {
+                        detalle += "\n";
+                    }
+                    detalle += "Notas: " + sp.getObservaciones();
+                }
                 asignadasModel.addRow(new Object[]{
                         sp.getId(),
                         obtenerNombreProceso(sp.getProcesoId()),
                         sp.getEstado() != null ? sp.getEstado().toUpperCase() : "-",
                         sp.getFechaSolicitud() != null ? FECHA_FORMATO.format(sp.getFechaSolicitud()) : "-",
                         obtenerNombreUsuario(sp.getUsuarioId()),
-                        sp.getResultado() != null ? sp.getResultado() : ""
+                        detalle
                 });
             }
         } catch (ErrorConexionMongoException e) {

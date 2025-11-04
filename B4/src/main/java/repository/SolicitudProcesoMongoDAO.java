@@ -37,6 +37,9 @@ public class SolicitudProcesoMongoDAO {
         if (solicitud.getResultado() != null) {
             doc.append("resultado", solicitud.getResultado());
         }
+        if (solicitud.getObservaciones() != null) {
+            doc.append("observaciones", solicitud.getObservaciones());
+        }
         
         collection.insertOne(doc);
         return doc.getObjectId("_id").toString();
@@ -68,6 +71,9 @@ public class SolicitudProcesoMongoDAO {
         if (doc.containsKey("resultado")) {
             solicitud.setResultado(doc.getString("resultado"));
         }
+        if (doc.containsKey("observaciones")) {
+            solicitud.setObservaciones(doc.getString("observaciones"));
+        }
         
         return solicitud;
     }
@@ -88,6 +94,12 @@ public class SolicitudProcesoMongoDAO {
             if (paramsDoc != null) {
                 solicitud.setParametros(paramsDoc);
             }
+            if (doc.containsKey("resultado")) {
+                solicitud.setResultado(doc.getString("resultado"));
+            }
+            if (doc.containsKey("observaciones")) {
+                solicitud.setObservaciones(doc.getString("observaciones"));
+            }
             
             solicitudes.add(solicitud);
         }
@@ -103,6 +115,12 @@ public class SolicitudProcesoMongoDAO {
             solicitud.setProcesoId(doc.getString("proceso_id"));
             solicitud.setEstado(doc.getString("estado"));
             solicitud.setTecnicoAsignadoId(doc.getString("tecnico_asignado_id"));
+            if (doc.containsKey("resultado")) {
+                solicitud.setResultado(doc.getString("resultado"));
+            }
+            if (doc.containsKey("observaciones")) {
+                solicitud.setObservaciones(doc.getString("observaciones"));
+            }
             solicitudes.add(solicitud);
         }
         return solicitudes;
@@ -124,6 +142,12 @@ public class SolicitudProcesoMongoDAO {
             if (paramsDoc != null) {
                 solicitud.setParametros(paramsDoc);
             }
+            if (doc.containsKey("resultado")) {
+                solicitud.setResultado(doc.getString("resultado"));
+            }
+            if (doc.containsKey("observaciones")) {
+                solicitud.setObservaciones(doc.getString("observaciones"));
+            }
             
             solicitudes.add(solicitud);
         }
@@ -144,10 +168,14 @@ public class SolicitudProcesoMongoDAO {
         );
     }
     
-    public void actualizarResultado(String id, String resultado) {
+    public void actualizarResultado(String id, String resultado, String observaciones) {
+        Document updateDoc = new Document("resultado", resultado);
+        if (observaciones != null) {
+            updateDoc.append("observaciones", observaciones);
+        }
         collection.updateOne(
                 Filters.eq("_id", new ObjectId(id)),
-                new Document("$set", new Document("resultado", resultado))
+                new Document("$set", updateDoc)
         );
     }
 }

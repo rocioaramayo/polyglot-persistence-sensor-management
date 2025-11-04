@@ -79,18 +79,16 @@ public class SensorCassandraDAO {
     }
 
     public List<Sensor> obtenerPorCiudad(String ciudad) throws ErrorConexionCassandraException {
-        List<Sensor> sensores = new ArrayList<>();
-        try {
-            CqlSession session = CassandraPool.getInstance().getSession();
-            String cql = "SELECT * FROM sensores WHERE ciudad = ? ALLOW FILTERING";
-            ResultSet rs = session.execute(cql, ciudad);
-            for (Row row : rs) {
-                sensores.add(mapearSensor(row));
-            }
-        } catch (Exception e) {
-            throw new ErrorConexionCassandraException("Error al obtener sensores", e);
+        if (ciudad == null || ciudad.isBlank()) {
+            return listarTodos();
         }
-        return sensores;
+        List<Sensor> filtrados = new ArrayList<>();
+        for (Sensor sensor : listarTodos()) {
+            if (sensor.getCiudad() != null && sensor.getCiudad().equalsIgnoreCase(ciudad)) {
+                filtrados.add(sensor);
+            }
+        }
+        return filtrados;
     }
 
     public List<Sensor> listarTodos() throws ErrorConexionCassandraException {
