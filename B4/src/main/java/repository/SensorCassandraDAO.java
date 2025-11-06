@@ -29,8 +29,8 @@ public class SensorCassandraDAO {
     public void crear(Sensor sensor) throws ErrorConexionCassandraException {
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
-            String id = UUID.randomUUID().toString();
-            sensor.setId(id);
+            UUID id = UUID.randomUUID();
+            sensor.setId(id.toString());
 
             LocalDateTime fechaInicio = sensor.getFechaInicio() != null ? sensor.getFechaInicio() : LocalDateTime.now();
             LocalDateTime fechaInstalacion = sensor.getFechaInstalacion() != null ? sensor.getFechaInstalacion() : fechaInicio;
@@ -67,7 +67,7 @@ public class SensorCassandraDAO {
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
             String cql = "SELECT * FROM sensores WHERE id = ?";
-            ResultSet rs = session.execute(cql, id);
+            ResultSet rs = session.execute(cql, UUID.fromString(id));
             Row row = rs.one();
             if (row != null) {
                 return mapearSensor(row);
@@ -108,7 +108,7 @@ public class SensorCassandraDAO {
 
     private Sensor mapearSensor(Row row) {
         Sensor sensor = new Sensor();
-        sensor.setId(row.getString("id"));
+        sensor.setId(row.getUuid("id").toString());
         sensor.setNombre(row.getString("nombre"));
         sensor.setCodigo(row.getString("codigo"));
         // El esquema usa columna tipo_sensor
@@ -139,7 +139,7 @@ public class SensorCassandraDAO {
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
             String cql = "UPDATE sensores SET estado = ?, ultima_actualizacion = toTimestamp(now()) WHERE id = ?";
-            session.execute(cql, nuevoEstado, id);
+            session.execute(cql, nuevoEstado, UUID.fromString(id));
         } catch (Exception e) {
             throw new ErrorConexionCassandraException("Error al actualizar estado del sensor", e);
         }

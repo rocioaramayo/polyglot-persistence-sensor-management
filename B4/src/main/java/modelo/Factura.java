@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 public class Factura {
     private Integer id;
+    private String solicitudId;
     private Integer usuarioId;
     private LocalDateTime fechaEmision;
     private Double monto;
@@ -28,6 +29,9 @@ public class Factura {
     // Getters y Setters
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
+
+    public String getSolicitudId() { return solicitudId; }
+    public void setSolicitudId(String solicitudId) { this.solicitudId = solicitudId; }
 
     public Integer getUsuarioId() { return usuarioId; }
     public void setUsuarioId(Integer usuarioId) { this.usuarioId = usuarioId; }

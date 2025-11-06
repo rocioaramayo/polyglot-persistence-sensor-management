@@ -1,4 +1,4 @@
-package services;
+﻿package services;
 
 import exceptions.ErrorConexionCassandraException;
 import exceptions.ErrorConexionMongoException;
@@ -21,7 +21,6 @@ import repository.AlertaMongoDAO;
 import repository.MensajeMongoDAO;
 import modelo.Mensaje;
 import modelo.Alerta;
-import services.SensorService;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 public class SolicitudProcesoService {
+
     private static SolicitudProcesoService instance;
 
     private SolicitudProcesoService() {}
@@ -46,16 +46,19 @@ public class SolicitudProcesoService {
     }
 
     public void asignarTecnico(String solicitudId, String tecnicoId) throws ErrorConexionMongoException {
+        validarUUID(solicitudId);
         SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
         dao.asignarTecnico(solicitudId, tecnicoId);
     }
 
     public void aprobarSolicitud(String solicitudId) throws ErrorConexionMongoException {
+        validarUUID(solicitudId);
         SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
         dao.actualizarEstado(solicitudId, "aprobado");
     }
 
     public void ejecutarSolicitud(String solicitudId) throws ErrorConexionMongoException, ErrorConexionCassandraException {
+        validarUUID(solicitudId);
         SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
         SolicitudProceso s = dao.buscarPorId(solicitudId);
         if (s == null) throw new ErrorConexionMongoException("Solicitud no encontrada: " + solicitudId, null);
@@ -77,6 +80,7 @@ public class SolicitudProcesoService {
     }
 
     public void completarSolicitud(String solicitudId) throws ErrorConexionMongoException, ErrorConexionMySQLException {
+        validarUUID(solicitudId);
         SolicitudProcesoMongoDAO dao3 = new SolicitudProcesoMongoDAO();
         SolicitudProceso s = dao3.buscarPorId(solicitudId);
         if (s == null) throw new ErrorConexionMongoException("Solicitud no encontrada: " + solicitudId, null);
@@ -106,10 +110,10 @@ public class SolicitudProcesoService {
                 }
             } catch (ErrorConexionCassandraException | ErrorConexionMongoException ex) {
                 System.err.println("No se pudo generar informe para la solicitud " + solicitudId + ": " + ex.getMessage());
-                observacionesGeneradas = "No se pudo generar el informe automático: " + ex.getMessage();
+                observacionesGeneradas = "No se pudo generar el informe automÃ¡tico: " + ex.getMessage();
             }
         } else {
-            observacionesGeneradas = "No se encontró la definición del proceso asociado (" + s.getProcesoId() + ").";
+            observacionesGeneradas = "No se encontrÃ³ la definiciÃ³n del proceso asociado (" + s.getProcesoId() + ").";
         }
 
         if (resultadoGenerado != null || observacionesGeneradas != null) {
@@ -123,8 +127,9 @@ public class SolicitudProcesoService {
         Integer usuarioIdInt = null;
         try { usuarioIdInt = Integer.parseInt(s.getUsuarioId()); } catch (Exception e) { usuarioIdInt = null; }
 
-        // Crear factura en MySQL (usuarioId puede ser null si el usuario está en Mongo)
+        // Crear factura en MySQL (usuarioId puede ser null si el usuario estÃ¡ en Mongo)
         Factura factura = new Factura(usuarioIdInt, monto, "Factura por solicitud " + solicitudId);
+        factura.setSolicitudId(solicitudId);
         try {
             Usuario usuario = UsuarioService.getInstance().obtenerPorId(s.getUsuarioId());
             if (usuario != null) {
@@ -134,11 +139,11 @@ public class SolicitudProcesoService {
                 factura.setTelefonoFacturacion(usuario.getTelefono());
             }
         } catch (ErrorConexionMongoException ex) {
-            System.err.println("No se pudo obtener información adicional del usuario " + s.getUsuarioId() + ": " + ex.getMessage());
+            System.err.println("No se pudo obtener informaciÃ³n adicional del usuario " + s.getUsuarioId() + ": " + ex.getMessage());
         }
         FacturaMySQLRepository.getInstance().crear(factura);
 
-        // Si tenemos un usuario numérico, actualizar cuenta y crear movimiento
+        // Si tenemos un usuario numÃ©rico, actualizar cuenta y crear movimiento
         if (usuarioIdInt != null) {
             CuentaCorriente cuenta = CuentaMySQLRepository.getInstance().obtenerPorUsuario(usuarioIdInt);
             if (cuenta == null) {
@@ -156,9 +161,9 @@ public class SolicitudProcesoService {
             }
         }
 
-        // Crear alerta y mensaje para notificar al usuario que su informe está listo
+        // Crear alerta y mensaje para notificar al usuario que su informe estÃ¡ listo
         try {
-            Alerta alerta = new Alerta("PROCESO_COMPLETADO", "Su informe para la solicitud " + solicitudId + " está listo.", "MEDIA");
+            Alerta alerta = new Alerta("PROCESO_COMPLETADO", "Su informe para la solicitud " + solicitudId + " estÃ¡ listo.", "MEDIA");
             // usuarioId en Solicitud es String (Mongo id), preferimos notificar con ese id
             alerta.setUsuarioId(s.getUsuarioId());
             AlertaMongoDAO alertaDao = new AlertaMongoDAO();
@@ -166,13 +171,13 @@ public class SolicitudProcesoService {
 
             Mensaje mensaje = new Mensaje();
             mensaje.setId(java.util.UUID.randomUUID().toString());
-            mensaje.setRemitente("system"); // sistema como id simbólico
+            mensaje.setRemitente("system"); // sistema como id simbÃ³lico
             mensaje.setDestinatario(s.getUsuarioId());
             mensaje.setContenido("Su informe solicitado (" + solicitudId + ") ha sido completado.");
             mensaje.setTipo("PRIVADO");
             MensajeMongoDAO.getInstance().crear(mensaje);
         } catch (Exception e) {
-            // si falla la notificación, no impedir el flujo principal
+            // si falla la notificaciÃ³n, no impedir el flujo principal
         }
     }
 
@@ -247,4 +252,14 @@ public class SolicitudProcesoService {
         }
         return null;
     }
+    
+    private void validarUUID(String id) {
+        try {
+            java.util.UUID.fromString(id);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("ID de solicitud no es un UUID valido: " + id);
+        }
+    }
 }
+
+

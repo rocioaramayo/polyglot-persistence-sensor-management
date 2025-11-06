@@ -35,9 +35,9 @@ public class HistorialEjecucionCassandraDAO {
 
     public void insertar(HistorialEjecucion historial) {
         session.execute(insertStmt.bind(
-            historial.getSolicitudId(),
+            UUID.fromString(historial.getSolicitudId()),
             Instant.from(historial.getFechaEjecucion().atZone(ZoneId.systemDefault())),
-            UUID.randomUUID().toString(),
+            UUID.randomUUID(),
             historial.getProcesoId(),
             historial.getUsuarioId(),
             historial.getTecnicoId(),
@@ -53,12 +53,12 @@ public class HistorialEjecucionCassandraDAO {
 
     public List<HistorialEjecucion> listarPorSolicitud(String solicitudId) {
         List<HistorialEjecucion> historiales = new ArrayList<>();
-        ResultSet rs = session.execute(selectBySolicitudStmt.bind(solicitudId));
+        ResultSet rs = session.execute(selectBySolicitudStmt.bind(UUID.fromString(solicitudId)));
         
         for (Row row : rs) {
             HistorialEjecucion historial = new HistorialEjecucion();
-            historial.setSolicitudId(row.getString("solicitud_id"));
-            historial.setId(row.getString("id"));
+            historial.setSolicitudId(row.getUuid("solicitud_id").toString());
+            historial.setId(row.getUuid("id").toString());
             historial.setProcesoId(row.getString("proceso_id"));
             historial.setUsuarioId(row.getInt("usuario_id"));
             historial.setTecnicoId(row.getInt("tecnico_id"));

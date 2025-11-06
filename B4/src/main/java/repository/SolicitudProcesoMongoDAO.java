@@ -7,7 +7,7 @@ import connections.MongoPool;
 import exceptions.ErrorConexionMongoException;
 import modelo.SolicitudProceso;
 import org.bson.Document;
-import org.bson.types.ObjectId;
+import java.util.UUID;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -23,7 +23,8 @@ public class SolicitudProcesoMongoDAO {
     }
 
     public String insertar(SolicitudProceso solicitud) {
-        Document doc = new Document()
+        String id = solicitud.getId() != null ? solicitud.getId() : UUID.randomUUID().toString();
+        Document doc = new Document("_id", id)
                 .append("usuario_id", solicitud.getUsuarioId())
                 .append("proceso_id", solicitud.getProcesoId())
                 .append("fecha_solicitud", Date.from(solicitud.getFechaSolicitud().atZone(ZoneId.systemDefault()).toInstant()))
@@ -42,11 +43,11 @@ public class SolicitudProcesoMongoDAO {
         }
         
         collection.insertOne(doc);
-        return doc.getObjectId("_id").toString();
+        return id;
     }
 
     public SolicitudProceso buscarPorId(String id) {
-        Document doc = collection.find(Filters.eq("_id", new ObjectId(id))).first();
+        Document doc = collection.find(Filters.eq("_id", id)).first();
         if (doc == null) return null;
 
         SolicitudProceso solicitud = new SolicitudProceso();
@@ -82,7 +83,7 @@ public class SolicitudProcesoMongoDAO {
         List<SolicitudProceso> solicitudes = new ArrayList<>();
         for (Document doc : collection.find(Filters.eq("usuario_id", usuarioId))) {
             SolicitudProceso solicitud = new SolicitudProceso();
-            solicitud.setId(doc.getObjectId("_id").toString());
+            solicitud.setId(doc.getString("_id"));
             solicitud.setUsuarioId(doc.getString("usuario_id"));
             solicitud.setProcesoId(doc.getString("proceso_id"));
             solicitud.setEstado(doc.getString("estado"));
@@ -110,7 +111,7 @@ public class SolicitudProcesoMongoDAO {
         List<SolicitudProceso> solicitudes = new ArrayList<>();
         for (Document doc : collection.find(Filters.eq("tecnico_asignado_id", tecnicoId))) {
             SolicitudProceso solicitud = new SolicitudProceso();
-            solicitud.setId(doc.getObjectId("_id").toString());
+            solicitud.setId(doc.getString("_id"));
             solicitud.setUsuarioId(doc.getString("usuario_id"));
             solicitud.setProcesoId(doc.getString("proceso_id"));
             solicitud.setEstado(doc.getString("estado"));
@@ -130,7 +131,7 @@ public class SolicitudProcesoMongoDAO {
         List<SolicitudProceso> solicitudes = new ArrayList<>();
         for (Document doc : collection.find(Filters.eq("estado", "pendiente"))) {
             SolicitudProceso solicitud = new SolicitudProceso();
-            solicitud.setId(doc.getObjectId("_id").toString());
+            solicitud.setId(doc.getString("_id"));
             solicitud.setUsuarioId(doc.getString("usuario_id"));
             solicitud.setProcesoId(doc.getString("proceso_id"));
             solicitud.setEstado(doc.getString("estado"));
@@ -156,14 +157,14 @@ public class SolicitudProcesoMongoDAO {
 
     public void actualizarEstado(String id, String estado) {
         collection.updateOne(
-                Filters.eq("_id", new ObjectId(id)),
+                Filters.eq("_id", id),
                 new Document("$set", new Document("estado", estado))
         );
     }
 
     public void asignarTecnico(String id, String tecnicoId) {
         collection.updateOne(
-                Filters.eq("_id", new ObjectId(id)),
+                Filters.eq("_id", id),
                 new Document("$set", new Document("tecnico_asignado_id", tecnicoId))
         );
     }
@@ -174,7 +175,7 @@ public class SolicitudProcesoMongoDAO {
             updateDoc.append("observaciones", observaciones);
         }
         collection.updateOne(
-                Filters.eq("_id", new ObjectId(id)),
+                Filters.eq("_id", id),
                 new Document("$set", updateDoc)
         );
     }

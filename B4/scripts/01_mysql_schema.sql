@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS facturas (
     id INT PRIMARY KEY AUTO_INCREMENT,
     numero_factura VARCHAR(50) UNIQUE NOT NULL,
     usuario_id INT NOT NULL,
-    solicitud_proceso_id VARCHAR(36),
+    solicitud_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     monto DECIMAL(10, 2) NOT NULL,
     fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP,
     fecha_vencimiento DATETIME,
@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS facturas (
     apellido_facturacion VARCHAR(100) NULL,
     direccion_facturacion VARCHAR(255) NULL,
     telefono_facturacion VARCHAR(50) NULL,
+    UNIQUE KEY uq_solicitud (solicitud_id),
     INDEX idx_usuario (usuario_id),
     INDEX idx_estado (estado),
     INDEX idx_fecha_emision (fecha_emision)

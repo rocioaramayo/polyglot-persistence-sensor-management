@@ -20,7 +20,7 @@ public class FacturaMySQLRepository {
     }
 
     public void crear(Factura factura) throws ErrorConexionMySQLException {
-        String sql = "INSERT INTO facturas (usuario_id, fecha_emision, monto, estado, descripcion, nombre_facturacion, apellido_facturacion, direccion_facturacion, telefono_facturacion, numero_factura) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO facturas (usuario_id, solicitud_id, fecha_emision, monto, estado, descripcion, nombre_facturacion, apellido_facturacion, direccion_facturacion, telefono_facturacion, numero_factura) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = MySQLPool.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             if (factura.getUsuarioId() != null) {
@@ -28,16 +28,17 @@ public class FacturaMySQLRepository {
             } else {
                 stmt.setNull(1, java.sql.Types.INTEGER);
             }
-            stmt.setTimestamp(2, Timestamp.valueOf(factura.getFechaEmision()));
-            stmt.setDouble(3, factura.getMonto());
-            stmt.setString(4, factura.getEstado());
-            stmt.setString(5, factura.getDescripcion());
-            stmt.setString(6, factura.getNombreFacturacion());
-            stmt.setString(7, factura.getApellidoFacturacion());
-            stmt.setString(8, factura.getDireccionFacturacion());
-            stmt.setString(9, factura.getTelefonoFacturacion());
+            stmt.setString(2, factura.getSolicitudId());
+            stmt.setTimestamp(3, Timestamp.valueOf(factura.getFechaEmision()));
+            stmt.setDouble(4, factura.getMonto());
+            stmt.setString(5, factura.getEstado());
+            stmt.setString(6, factura.getDescripcion());
+            stmt.setString(7, factura.getNombreFacturacion());
+            stmt.setString(8, factura.getApellidoFacturacion());
+            stmt.setString(9, factura.getDireccionFacturacion());
+            stmt.setString(10, factura.getTelefonoFacturacion());
             // numero_factura simple: F-<epochMillis>
-            stmt.setString(10, "F-" + System.currentTimeMillis());
+            stmt.setString(11, "F-" + System.currentTimeMillis());
             stmt.executeUpdate();
         } catch (SQLException e) {
             throw new ErrorConexionMySQLException("Error al crear factura", e);

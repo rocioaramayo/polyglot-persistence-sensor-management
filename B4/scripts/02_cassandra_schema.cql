@@ -22,7 +22,7 @@ USE polyglot_ks;
 -- Tabla de Sensores (Datos Maestros)
 -- Almacena información básica de cada sensor
 CREATE TABLE IF NOT EXISTS sensores (
-    id TEXT PRIMARY KEY,
+    id uuid PRIMARY KEY,
     nombre TEXT,
     codigo TEXT,
     tipo_sensor TEXT,
@@ -45,9 +45,9 @@ CREATE TABLE IF NOT EXISTS sensores (
 -- Partition key: sensor_id para distribuir datos
 -- Clustering key: fecha DESC para ordenar por tiempo (más recientes primero)
 CREATE TABLE IF NOT EXISTS mediciones (
-    sensor_id TEXT,
+    sensor_id uuid,
     fecha TIMESTAMP,
-    id TEXT,
+    id uuid,
     temperatura DOUBLE,
     humedad DOUBLE,
     PRIMARY KEY (sensor_id, fecha)
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS mediciones (
 CREATE TABLE IF NOT EXISTS mediciones_por_ciudad (
     ciudad TEXT,
     fecha TIMESTAMP,
-    sensor_id TEXT,
+    sensor_id uuid,
     temperatura DOUBLE,
     humedad DOUBLE,
     PRIMARY KEY (ciudad, fecha, sensor_id)
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS mediciones_por_ciudad (
 CREATE TABLE IF NOT EXISTS mediciones_por_pais (
     pais TEXT,
     fecha TIMESTAMP,
-    sensor_id TEXT,
+    sensor_id uuid,
     ciudad TEXT,
     temperatura DOUBLE,
     humedad DOUBLE,
@@ -83,16 +83,16 @@ CREATE TABLE IF NOT EXISTS mediciones_por_pais (
 -- Partition key: solicitud_id para agrupar todas las ejecuciones de una solicitud
 -- Clustering key: fecha_ejecucion DESC para ordenar cronológicamente
 CREATE TABLE IF NOT EXISTS historial_ejecucion (
-    solicitud_id TEXT,
+    solicitud_id uuid,
     fecha_ejecucion TIMESTAMP,
-    id TEXT,
+    id uuid,
     proceso_id TEXT,
     usuario_id INT,
     tecnico_id INT,
     estado TEXT,
     resultado TEXT,
     parametros MAP<TEXT, TEXT>,
-    sensores_utilizados SET<TEXT>,
+    sensores_utilizados SET<uuid>,
     registros_procesados BIGINT,
     tiempo_ejecucion_ms BIGINT,
     fecha_inicio TIMESTAMP,
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS historial_ejecucion (
 CREATE TABLE IF NOT EXISTS historial_por_usuario (
     usuario_id INT,
     fecha_ejecucion TIMESTAMP,
-    solicitud_id TEXT,
+    solicitud_id uuid,
     proceso_id TEXT,
     estado TEXT,
     resultado TEXT,
@@ -121,7 +121,7 @@ CREATE TABLE IF NOT EXISTS historial_por_usuario (
 CREATE TABLE IF NOT EXISTS historial_por_tecnico (
     tecnico_id INT,
     fecha_ejecucion TIMESTAMP,
-    solicitud_id TEXT,
+    solicitud_id uuid,
     proceso_id TEXT,
     estado TEXT,
     tiempo_ejecucion_ms BIGINT,

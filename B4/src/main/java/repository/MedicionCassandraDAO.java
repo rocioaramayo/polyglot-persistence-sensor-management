@@ -28,13 +28,13 @@ public class MedicionCassandraDAO {
     public void crear(Medicion medicion) throws ErrorConexionCassandraException {
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
-            String id = UUID.randomUUID().toString();
-            medicion.setId(id);
+            UUID id = UUID.randomUUID();
+            medicion.setId(id.toString());
 
             String cql = "INSERT INTO mediciones (sensor_id, fecha, id, temperatura, humedad) " +
                     "VALUES (?, toTimestamp(now()), ?, ?, ?)";
 
-            session.execute(cql, medicion.getSensorId(), id, 
+            session.execute(cql, UUID.fromString(medicion.getSensorId()), id,
                     medicion.getTemperatura(), medicion.getHumedad());
         } catch (Exception e) {
             throw new ErrorConexionCassandraException("Error al crear medicion", e);
@@ -50,7 +50,7 @@ public class MedicionCassandraDAO {
         try {
             CqlSession session = CassandraPool.getInstance().getSession();
             String cql = "SELECT * FROM mediciones WHERE sensor_id = ? LIMIT 100";
-            ResultSet rs = session.execute(cql, sensorId);
+            ResultSet rs = session.execute(cql, UUID.fromString(sensorId));
             for (Row row : rs) {
                 mediciones.add(mapearMedicion(row));
             }
@@ -70,7 +70,7 @@ public class MedicionCassandraDAO {
             CqlSession session = CassandraPool.getInstance().getSession();
             StringBuilder cql = new StringBuilder("SELECT * FROM mediciones WHERE sensor_id = ?");
             List<Object> params = new ArrayList<>();
-            params.add(sensorId);
+            params.add(UUID.fromString(sensorId));
             if (fechaInicio != null) {
                 cql.append(" AND fecha >= ?");
                 params.add(fechaInicio);
@@ -107,8 +107,8 @@ public class MedicionCassandraDAO {
 
     private Medicion mapearMedicion(Row row) {
         Medicion medicion = new Medicion();
-        medicion.setId(row.getString("id"));
-        medicion.setSensorId(row.getString("sensor_id"));
+        medicion.setId(row.getUuid("id").toString());
+        medicion.setSensorId(row.getUuid("sensor_id").toString());
         medicion.setTemperatura(row.getDouble("temperatura"));
         medicion.setHumedad(row.getDouble("humedad"));
         Instant fecha = row.getInstant("fecha");
