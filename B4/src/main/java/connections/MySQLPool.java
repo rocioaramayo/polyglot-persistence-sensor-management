@@ -15,11 +15,11 @@ public class MySQLPool {
     private MySQLPool() throws ErrorConexionMySQLException {
         try {
             ConfigLoader config = ConfigLoader.getInstance();
-            String host = config.getProperty("mysql.host", "localhost");
+            String host = config.getProperty("mysql.host", "127.0.0.1");
             String port = config.getProperty("mysql.port", "3306");
-            String database = config.getProperty("mysql.database", "sensor_db");
+            String database = config.getProperty("mysql.database", "polyglot_db");
             this.user = config.getProperty("mysql.user", "root");
-            this.password = config.getProperty("mysql.password", "root");
+            this.password = config.getProperty("mysql.password", "admin");
 
             this.url = "jdbc:mysql://" + host + ":" + port + "/" + database 
                     + "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
@@ -41,7 +41,13 @@ public class MySQLPool {
         try {
             return DriverManager.getConnection(url, user, password);
         } catch (SQLException e) {
-            throw new ErrorConexionMySQLException("Error al conectar a MySQL", e);
+            String urlSafe = url.replaceAll("(?i)(password=)[^&]+", "$1****");
+            String detalle = e.getMessage();
+            String state = e.getSQLState();
+            throw new ErrorConexionMySQLException(
+                    "Error al conectar a MySQL (" + urlSafe + ", user=" + user + ") : " + detalle +
+                            (state != null ? " [SQLState=" + state + "]" : ""),
+                    e);
         }
     }
 
