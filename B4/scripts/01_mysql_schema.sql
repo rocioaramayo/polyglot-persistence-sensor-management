@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS cuentas_corrientes (
 CREATE TABLE IF NOT EXISTS facturas (
     id INT PRIMARY KEY AUTO_INCREMENT,
     numero_factura VARCHAR(50) UNIQUE NOT NULL,
-    usuario_id INT NOT NULL,
+    usuario_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     solicitud_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     monto DECIMAL(10, 2) NOT NULL,
     fecha_emision DATETIME DEFAULT CURRENT_TIMESTAMP,

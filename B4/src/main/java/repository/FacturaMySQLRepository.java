@@ -23,11 +23,7 @@ public class FacturaMySQLRepository {
         String sql = "INSERT INTO facturas (usuario_id, solicitud_id, fecha_emision, monto, estado, descripcion, nombre_facturacion, apellido_facturacion, direccion_facturacion, telefono_facturacion, numero_factura) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = MySQLPool.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            if (factura.getUsuarioId() != null) {
-                stmt.setInt(1, factura.getUsuarioId());
-            } else {
-                stmt.setNull(1, java.sql.Types.INTEGER);
-            }
+            stmt.setString(1, factura.getUsuarioId());
             stmt.setString(2, factura.getSolicitudId());
             stmt.setTimestamp(3, Timestamp.valueOf(factura.getFechaEmision()));
             stmt.setDouble(4, factura.getMonto());
@@ -49,12 +45,12 @@ public class FacturaMySQLRepository {
         crear(factura);
     }
 
-    public List<Factura> obtenerPorUsuario(Integer usuarioId) throws ErrorConexionMySQLException {
+    public List<Factura> obtenerPorUsuario(String usuarioId) throws ErrorConexionMySQLException {
         List<Factura> facturas = new ArrayList<>();
         String sql = "SELECT * FROM facturas WHERE usuario_id = ?";
         try (Connection conn = MySQLPool.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, usuarioId);
+            stmt.setString(1, usuarioId);
             ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 facturas.add(mapearFactura(rs));
@@ -112,12 +108,7 @@ public class FacturaMySQLRepository {
         Factura factura = new Factura();
         factura.setId(rs.getInt("id"));
         try { factura.setSolicitudId(rs.getString("solicitud_id")); } catch (Exception ignored) {}
-        Object uidObj = rs.getObject("usuario_id");
-        if (uidObj != null) {
-            factura.setUsuarioId(rs.getInt("usuario_id"));
-        } else {
-            factura.setUsuarioId(null);
-        }
+        factura.setUsuarioId(rs.getString("usuario_id"));
         factura.setFechaEmision(rs.getTimestamp("fecha_emision").toLocalDateTime());
         factura.setMonto(rs.getDouble("monto"));
         factura.setEstado(rs.getString("estado"));

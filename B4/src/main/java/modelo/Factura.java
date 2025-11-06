@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 public class Factura {
     private Integer id;
     private String solicitudId;
-    private Integer usuarioId;
+    private String usuarioId;
     private LocalDateTime fechaEmision;
     private Double monto;
     private String estado; // pendiente, pagada, vencida
@@ -18,7 +18,7 @@ public class Factura {
 
     public Factura() {}
 
-    public Factura(Integer usuarioId, Double monto, String descripcion) {
+    public Factura(String usuarioId, Double monto, String descripcion) {
         this.usuarioId = usuarioId;
         this.monto = monto;
         this.descripcion = descripcion;
@@ -33,8 +33,8 @@ public class Factura {
     public String getSolicitudId() { return solicitudId; }
     public void setSolicitudId(String solicitudId) { this.solicitudId = solicitudId; }
 
-    public Integer getUsuarioId() { return usuarioId; }
-    public void setUsuarioId(Integer usuarioId) { this.usuarioId = usuarioId; }
+    public String getUsuarioId() { return usuarioId; }
+    public void setUsuarioId(String usuarioId) { this.usuarioId = usuarioId; }
 
     public LocalDateTime getFechaEmision() { return fechaEmision; }
     public void setFechaEmision(LocalDateTime fechaEmision) { this.fechaEmision = fechaEmision; }

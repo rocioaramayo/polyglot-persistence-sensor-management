@@ -20,13 +20,17 @@ public class FacturaService {
         return instance;
     }
 
-    public void crearFactura(Integer usuarioId, Double monto, String descripcion) 
+    public void crearFactura(String usuarioId, Double monto, String descripcion) 
             throws ErrorConexionMySQLException {
         Factura factura = new Factura(usuarioId, monto, descripcion);
         FacturaMySQLRepository.getInstance().crear(factura);
 
         // Registrar cargo en cuenta corriente
-        CuentaCorriente cuenta = CuentaMySQLRepository.getInstance().obtenerPorUsuario(usuarioId);
+        Integer usuarioIdInt = null;
+        try { usuarioIdInt = Integer.parseInt(usuarioId); } catch (Exception ignored) {}
+        CuentaCorriente cuenta = usuarioIdInt != null
+                ? CuentaMySQLRepository.getInstance().obtenerPorUsuario(usuarioIdInt)
+                : null;
         if (cuenta != null) {
             Double nuevoSaldo = cuenta.getSaldo() - monto;
             CuentaMySQLRepository.getInstance().actualizarSaldo(cuenta.getId(), nuevoSaldo);

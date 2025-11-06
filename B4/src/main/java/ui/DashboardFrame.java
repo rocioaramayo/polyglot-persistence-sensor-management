@@ -46,6 +46,9 @@ public class DashboardFrame extends JFrame {
     private JComboBox<String> tipoSensorCombo;
     private DefaultTableModel solicitudesModel;
     private JTable solicitudesTable;
+    private DefaultTableModel informesModel;
+    private JTable informesTable;
+    private final Map<String, SolicitudProceso> informesCache = new HashMap<>();
 
     private JLabel saldoLabel;
     private JTextField depositoField;
@@ -79,6 +82,7 @@ public class DashboardFrame extends JFrame {
         // La gestión de sensores se realiza solo en AdminFrame
         tabbedPane.addTab("Procesos", crearPanelProcesos());
         tabbedPane.addTab("Solicitudes", crearPanelSolicitudes());
+        tabbedPane.addTab("Informes", crearPanelInformes());
         tabbedPane.addTab("Alertas", crearPanelAlertas());
         tabbedPane.addTab("Mensajería", crearPanelMensajeria());
         tabbedPane.addTab("Cuenta", crearPanelCuenta());
@@ -961,6 +965,103 @@ public class DashboardFrame extends JFrame {
             JOptionPane.showMessageDialog(this, "No se pudieron cargar las solicitudes: " + ex.getMessage(),
                     "Error", JOptionPane.ERROR_MESSAGE);
         }
+        refrescarInformes();
+    }
+
+    private void refrescarInformes() {
+        if (informesModel == null) {
+            return;
+        }
+        informesModel.setRowCount(0);
+        informesCache.clear();
+        try {
+            List<SolicitudProceso> solicitudes = SolicitudProcesoService.getInstance()
+                    .listarPorUsuario(usuarioActual.getId());
+            for (SolicitudProceso sp : solicitudes) {
+                if (!"COMPLETADO".equalsIgnoreCase(sp.getEstado())) {
+                    continue;
+                }
+                informesCache.put(sp.getId(), sp);
+                informesModel.addRow(new Object[]{
+                        sp.getId(),
+                        obtenerNombreProceso(sp.getProcesoId()),
+                        sp.getEstado() != null ? sp.getEstado().toUpperCase() : "-",
+                        sp.getFechaSolicitud() != null ? MENSAJE_FORMATO.format(sp.getFechaSolicitud()) : "-",
+                        construirResumenInforme(sp)
+                });
+            }
+        } catch (ErrorConexionMongoException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudieron cargar los informes: " + ex.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void mostrarInformeSeleccionado() {
+        if (informesModel == null || informesModel.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "No hay informes disponibles.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int viewRow = informesTable.getSelectedRow();
+        if (viewRow < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccioná un informe de la tabla.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int modelRow = informesTable.convertRowIndexToModel(viewRow);
+        String id = (String) informesModel.getValueAt(modelRow, 0);
+        SolicitudProceso sp = informesCache.get(id);
+        if (sp == null) {
+            JOptionPane.showMessageDialog(this, "No se encontró el detalle del informe seleccionado.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        StringBuilder detalle = new StringBuilder();
+        detalle.append("Solicitud: ").append(id).append("\n");
+        detalle.append("Proceso: ").append(obtenerNombreProceso(sp.getProcesoId())).append("\n");
+        detalle.append("Estado: ").append(sp.getEstado()).append("\n");
+        if (sp.getFechaSolicitud() != null) {
+            detalle.append("Fecha solicitud: ").append(MENSAJE_FORMATO.format(sp.getFechaSolicitud())).append("\n");
+        }
+        if (sp.getTecnicoAsignadoId() != null) {
+            detalle.append("Técnico: ").append(obtenerNombreUsuario(sp.getTecnicoAsignadoId())).append("\n");
+        }
+        detalle.append("\nResultado:\n");
+        detalle.append(sp.getResultado() != null && !sp.getResultado().isBlank() ? sp.getResultado() : "(sin resultado)").append("\n");
+        if (sp.getObservaciones() != null && !sp.getObservaciones().isBlank()) {
+            detalle.append("\nObservaciones:\n").append(sp.getObservaciones()).append("\n");
+        }
+        if (sp.getParametros() != null && !sp.getParametros().isEmpty()) {
+            detalle.append("\nParámetros:\n");
+            sp.getParametros().forEach((k, v) -> detalle.append(" - ").append(k).append(": ").append(String.valueOf(v)).append("\n"));
+        }
+
+        JTextArea area = new JTextArea(detalle.toString());
+        area.setEditable(false);
+        area.setWrapStyleWord(true);
+        area.setLineWrap(true);
+        area.setCaretPosition(0);
+
+        JScrollPane scroll = new JScrollPane(area);
+        scroll.setPreferredSize(new Dimension(520, 360));
+
+        JOptionPane.showMessageDialog(this, scroll, "Detalle del informe", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private String construirResumenInforme(SolicitudProceso sp) {
+        StringBuilder sb = new StringBuilder();
+        if (sp.getResultado() != null && !sp.getResultado().isBlank()) {
+            sb.append(sp.getResultado().trim());
+        }
+        if (sp.getObservaciones() != null && !sp.getObservaciones().isBlank()) {
+            if (sb.length() > 0) {
+                sb.append(" | ");
+            }
+            sb.append("Notas: ").append(sp.getObservaciones().trim());
+        }
+        String texto = sb.toString().trim();
+        if (texto.isEmpty()) {
+            return "-";
+        }
+        return texto.length() > 80 ? texto.substring(0, 77) + "..." : texto;
     }
 
     private void refrescarCuenta() {
@@ -1091,6 +1192,38 @@ public class DashboardFrame extends JFrame {
         } catch (ErrorConexionMongoException ignored) {
         }
         return procesoId;
+    }
+
+    private JPanel crearPanelInformes() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        informesModel = new DefaultTableModel(new Object[]{"ID", "Proceso", "Estado", "Fecha", "Resumen"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+
+        informesTable = new JTable(informesModel);
+        informesTable.setAutoCreateRowSorter(true);
+        informesTable.setFillsViewportHeight(true);
+        informesTable.setRowHeight(24);
+        panel.add(new JScrollPane(informesTable), BorderLayout.CENTER);
+
+        JButton refrescarBtn = new JButton("Refrescar");
+        refrescarBtn.addActionListener(e -> refrescarInformes());
+
+        JButton verBtn = new JButton("Ver informe");
+        verBtn.addActionListener(e -> mostrarInformeSeleccionado());
+
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        acciones.add(refrescarBtn);
+        acciones.add(verBtn);
+        panel.add(acciones, BorderLayout.SOUTH);
+
+        refrescarInformes();
+        return panel;
     }
 
     private JPanel crearPanelAlertas() {

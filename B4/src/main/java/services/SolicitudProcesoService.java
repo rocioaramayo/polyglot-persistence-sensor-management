@@ -124,11 +124,12 @@ public class SolicitudProcesoService {
 
         Double monto =  proceso != null && proceso.getCosto() != null ? proceso.getCosto() : 0.0;
 
+        String usuarioIdCanonical = s.getUsuarioId();
         Integer usuarioIdInt = null;
-        try { usuarioIdInt = Integer.parseInt(s.getUsuarioId()); } catch (Exception e) { usuarioIdInt = null; }
+        try { usuarioIdInt = usuarioIdCanonical != null ? Integer.parseInt(usuarioIdCanonical) : null; } catch (Exception e) { usuarioIdInt = null; }
 
-        // Crear factura en MySQL (usuarioId puede ser null si el usuario estÃ¡ en Mongo)
-        Factura factura = new Factura(usuarioIdInt, monto, "Factura por solicitud " + solicitudId);
+        // Crear factura en MySQL usando identificador canónico del usuario
+        Factura factura = new Factura(usuarioIdCanonical, monto, "Factura por solicitud " + solicitudId);
         factura.setSolicitudId(solicitudId);
         try {
             Usuario usuario = UsuarioService.getInstance().obtenerPorId(s.getUsuarioId());
@@ -261,6 +262,11 @@ public class SolicitudProcesoService {
         }
     }
 }
+
+
+
+
+
 
 
 

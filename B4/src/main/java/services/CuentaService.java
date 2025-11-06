@@ -117,23 +117,10 @@ public class CuentaService {
     }
 
     public List<Factura> obtenerFacturas(String usuarioId) throws ErrorConexionMySQLException {
-        Integer id = parseUsuarioId(usuarioId);
-        if (id != null) {
-            return FacturaMySQLRepository.getInstance().obtenerPorUsuario(id);
-        }
-        // Fallback: usuario Mongo (no numerico) -> buscar facturas por solicitudes del usuario
-        try {
-            var dao = new repository.SolicitudProcesoMongoDAO();
-            var solicitudes = dao.listarPorUsuario(usuarioId);
-            if (solicitudes == null || solicitudes.isEmpty()) return Collections.emptyList();
-            List<Factura> todas = new java.util.ArrayList<>();
-            for (var sp : solicitudes) {
-                todas.addAll(FacturaMySQLRepository.getInstance().obtenerPorSolicitudId(sp.getId()));
-            }
-            return todas;
-        } catch (exceptions.ErrorConexionMongoException e) {
+        if (usuarioId == null || usuarioId.isBlank()) {
             return Collections.emptyList();
         }
+        return FacturaMySQLRepository.getInstance().obtenerPorUsuario(usuarioId);
     }
 
     private Integer parseUsuarioId(String usuarioId) {
