@@ -54,7 +54,7 @@ public class SolicitudProcesoService {
     public void aprobarSolicitud(String solicitudId) throws ErrorConexionMongoException {
         validarUUID(solicitudId);
         SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
-        dao.actualizarEstado(solicitudId, "aprobado");
+        dao.actualizarEstado(solicitudId, "APROBADO");
     }
 
     public void ejecutarSolicitud(String solicitudId) throws ErrorConexionMongoException, ErrorConexionCassandraException {
@@ -64,7 +64,7 @@ public class SolicitudProcesoService {
         if (s == null) throw new ErrorConexionMongoException("Solicitud no encontrada: " + solicitudId, null);
         // marcar en estado ejecucion
         SolicitudProcesoMongoDAO dao2 = new SolicitudProcesoMongoDAO();
-        dao2.actualizarEstado(solicitudId, "en_ejecucion");
+        dao2.actualizarEstado(solicitudId, "EN_EJECUCION");
 
         // registrar historial en Cassandra
         HistorialEjecucion historial = new HistorialEjecucion();
@@ -87,7 +87,7 @@ public class SolicitudProcesoService {
 
         // marcar completada
         SolicitudProcesoMongoDAO dao4 = new SolicitudProcesoMongoDAO();
-        dao4.actualizarEstado(solicitudId, "completado");
+        dao4.actualizarEstado(solicitudId, "COMPLETADO");
 
         // generar factura en MySQL basada en el costo del proceso
         Proceso proceso = null;
@@ -194,7 +194,7 @@ public class SolicitudProcesoService {
 
     public void rechazarSolicitud(String solicitudId) throws ErrorConexionMongoException {
         SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
-        dao.actualizarEstado(solicitudId, "rechazado");
+        dao.actualizarEstado(solicitudId, "RECHAZADO");
     }
 
     public List<SolicitudProceso> listarPorUsuario(String usuarioId) throws ErrorConexionMongoException {

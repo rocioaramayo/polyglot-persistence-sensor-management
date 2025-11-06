@@ -23,7 +23,7 @@ public class SolicitudProcesoMongoDAO {
         this.collection = db.getCollection("solicitudes_proceso");
     }
 
-    public String insertar(SolicitudProceso solicitud) {
+    public String insertar(SolicitudProceso solicitud) throws ErrorConexionMongoException {
         String id = solicitud.getId() != null ? solicitud.getId() : UUID.randomUUID().toString();
         Document doc = new Document("_id", id)
                 .append("usuario_id", solicitud.getUsuarioId())
@@ -42,9 +42,12 @@ public class SolicitudProcesoMongoDAO {
         if (solicitud.getObservaciones() != null) {
             doc.append("observaciones", solicitud.getObservaciones());
         }
-        
-        collection.insertOne(doc);
-        return id;
+        try {
+            collection.insertOne(doc);
+            return id;
+        } catch (Exception e) {
+            throw new ErrorConexionMongoException("Error al insertar solicitud en Mongo", e);
+        }
     }
 
     public SolicitudProceso buscarPorId(String id) {
@@ -142,7 +145,7 @@ public class SolicitudProcesoMongoDAO {
 
     public List<SolicitudProceso> listarPendientes() {
         List<SolicitudProceso> solicitudes = new ArrayList<>();
-        for (Document doc : collection.find(Filters.eq("estado", "pendiente"))) {
+        for (Document doc : collection.find(Filters.eq("estado", "PENDIENTE"))) {
             SolicitudProceso solicitud = new SolicitudProceso();
             Object rawId = doc.get("_id");
             solicitud.setId(rawId != null ? rawId.toString() : null);

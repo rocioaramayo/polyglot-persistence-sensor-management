@@ -10,7 +10,7 @@ public class SolicitudProceso {
     private String procesoId; // Referencia al proceso en MongoDB
     private String tecnicoAsignadoId; // Agregado para asignar técnico
     private LocalDateTime fechaSolicitud;
-    private String estado; // pendiente, aprobado, en_ejecucion, completado, rechazado
+    private String estado; // PENDIENTE, APROBADO, EN_EJECUCION, COMPLETADO, RECHAZADO
     private Map<String, Object> parametros; // Cambiado de String a Map para facilitar manejo
     private String resultado; // Resultado del proceso ejecutado
     private String observaciones; // Observaciones adicionales del técnico/proceso
@@ -23,7 +23,7 @@ public class SolicitudProceso {
         this.usuarioId = usuarioId;
         this.procesoId = procesoId;
         this.parametros = parametros != null ? parametros : new HashMap<>();
-        this.estado = "pendiente";
+        this.estado = "PENDIENTE";
         this.fechaSolicitud = LocalDateTime.now();
     }
 
