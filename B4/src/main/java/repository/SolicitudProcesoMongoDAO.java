@@ -8,6 +8,7 @@ import exceptions.ErrorConexionMongoException;
 import modelo.SolicitudProceso;
 import org.bson.Document;
 import java.util.UUID;
+import org.bson.types.ObjectId;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -48,6 +49,9 @@ public class SolicitudProcesoMongoDAO {
 
     public SolicitudProceso buscarPorId(String id) {
         Document doc = collection.find(Filters.eq("_id", id)).first();
+        if (doc == null && ObjectId.isValid(id)) {
+            doc = collection.find(Filters.eq("_id", new ObjectId(id))).first();
+        }
         if (doc == null) return null;
 
         SolicitudProceso solicitud = new SolicitudProceso();
@@ -81,9 +85,17 @@ public class SolicitudProcesoMongoDAO {
 
     public List<SolicitudProceso> listarPorUsuario(String usuarioId) {
         List<SolicitudProceso> solicitudes = new ArrayList<>();
-        for (Document doc : collection.find(Filters.eq("usuario_id", usuarioId))) {
+        var filtro = Filters.eq("usuario_id", usuarioId);
+        if (ObjectId.isValid(usuarioId)) {
+            filtro = Filters.or(
+                    Filters.eq("usuario_id", usuarioId),
+                    Filters.eq("usuario_id", new ObjectId(usuarioId))
+            );
+        }
+        for (Document doc : collection.find(filtro)) {
             SolicitudProceso solicitud = new SolicitudProceso();
-            solicitud.setId(doc.getString("_id"));
+            Object rawId = doc.get("_id");
+            solicitud.setId(rawId != null ? rawId.toString() : null);
             solicitud.setUsuarioId(doc.getString("usuario_id"));
             solicitud.setProcesoId(doc.getString("proceso_id"));
             solicitud.setEstado(doc.getString("estado"));
@@ -111,7 +123,8 @@ public class SolicitudProcesoMongoDAO {
         List<SolicitudProceso> solicitudes = new ArrayList<>();
         for (Document doc : collection.find(Filters.eq("tecnico_asignado_id", tecnicoId))) {
             SolicitudProceso solicitud = new SolicitudProceso();
-            solicitud.setId(doc.getString("_id"));
+            Object rawId = doc.get("_id");
+            solicitud.setId(rawId != null ? rawId.toString() : null);
             solicitud.setUsuarioId(doc.getString("usuario_id"));
             solicitud.setProcesoId(doc.getString("proceso_id"));
             solicitud.setEstado(doc.getString("estado"));
@@ -131,7 +144,8 @@ public class SolicitudProcesoMongoDAO {
         List<SolicitudProceso> solicitudes = new ArrayList<>();
         for (Document doc : collection.find(Filters.eq("estado", "pendiente"))) {
             SolicitudProceso solicitud = new SolicitudProceso();
-            solicitud.setId(doc.getString("_id"));
+            Object rawId = doc.get("_id");
+            solicitud.setId(rawId != null ? rawId.toString() : null);
             solicitud.setUsuarioId(doc.getString("usuario_id"));
             solicitud.setProcesoId(doc.getString("proceso_id"));
             solicitud.setEstado(doc.getString("estado"));
@@ -156,15 +170,21 @@ public class SolicitudProcesoMongoDAO {
     }
 
     public void actualizarEstado(String id, String estado) {
+        var filtroId = ObjectId.isValid(id) ?
+                Filters.or(Filters.eq("_id", id), Filters.eq("_id", new ObjectId(id))) :
+                Filters.eq("_id", id);
         collection.updateOne(
-                Filters.eq("_id", id),
+                filtroId,
                 new Document("$set", new Document("estado", estado))
         );
     }
 
     public void asignarTecnico(String id, String tecnicoId) {
+        var filtroId = ObjectId.isValid(id) ?
+                Filters.or(Filters.eq("_id", id), Filters.eq("_id", new ObjectId(id))) :
+                Filters.eq("_id", id);
         collection.updateOne(
-                Filters.eq("_id", id),
+                filtroId,
                 new Document("$set", new Document("tecnico_asignado_id", tecnicoId))
         );
     }
@@ -174,8 +194,11 @@ public class SolicitudProcesoMongoDAO {
         if (observaciones != null) {
             updateDoc.append("observaciones", observaciones);
         }
+        var filtroId = ObjectId.isValid(id) ?
+                Filters.or(Filters.eq("_id", id), Filters.eq("_id", new ObjectId(id))) :
+                Filters.eq("_id", id);
         collection.updateOne(
-                Filters.eq("_id", id),
+                filtroId,
                 new Document("$set", updateDoc)
         );
     }
