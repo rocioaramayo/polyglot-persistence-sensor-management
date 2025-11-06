@@ -20,14 +20,21 @@ public class MovimientoMySQLRepository {
     }
 
     public void crear(Movimiento movimiento) throws ErrorConexionMySQLException {
-        String sql = "INSERT INTO movimientos (cuenta_id, tipo, monto, fecha, descripcion) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO movimientos (cuenta_id, tipo, monto, saldo_anterior, saldo_nuevo, fecha, descripcion, referencia_id) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = MySQLPool.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, movimiento.getCuentaId());
             stmt.setString(2, movimiento.getTipo());
             stmt.setDouble(3, movimiento.getMonto());
-            stmt.setTimestamp(4, Timestamp.valueOf(movimiento.getFecha()));
-            stmt.setString(5, movimiento.getDescripcion());
+            stmt.setDouble(4, movimiento.getSaldoAnterior());
+            stmt.setDouble(5, movimiento.getSaldoNuevo());
+            Timestamp fecha = movimiento.getFecha() != null
+                    ? Timestamp.valueOf(movimiento.getFecha())
+                    : new Timestamp(System.currentTimeMillis());
+            stmt.setTimestamp(6, fecha);
+            stmt.setString(7, movimiento.getDescripcion());
+            stmt.setString(8, movimiento.getReferenciaId());
             stmt.executeUpdate();
         } catch (SQLException e) {
             throw new ErrorConexionMySQLException("Error al crear movimiento", e);
@@ -56,8 +63,14 @@ public class MovimientoMySQLRepository {
         movimiento.setCuentaId(rs.getInt("cuenta_id"));
         movimiento.setTipo(rs.getString("tipo"));
         movimiento.setMonto(rs.getDouble("monto"));
-        movimiento.setFecha(rs.getTimestamp("fecha").toLocalDateTime());
+        movimiento.setSaldoAnterior(rs.getDouble("saldo_anterior"));
+        movimiento.setSaldoNuevo(rs.getDouble("saldo_nuevo"));
+        Timestamp fecha = rs.getTimestamp("fecha");
+        if (fecha != null) {
+            movimiento.setFecha(fecha.toLocalDateTime());
+        }
         movimiento.setDescripcion(rs.getString("descripcion"));
+        movimiento.setReferenciaId(rs.getString("referencia_id"));
         return movimiento;
     }
 }

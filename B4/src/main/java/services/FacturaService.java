@@ -28,10 +28,19 @@ public class FacturaService {
         // Registrar cargo en cuenta corriente
         CuentaCorriente cuenta = CuentaService.getInstance().obtenerOCrearCuenta(usuarioId);
         if (cuenta != null) {
-            Double nuevoSaldo = cuenta.getSaldo() - monto;
+            double saldoAnterior = cuenta.getSaldo() != null ? cuenta.getSaldo() : 0.0;
+            double nuevoSaldo = saldoAnterior - monto;
             CuentaMySQLRepository.getInstance().actualizarSaldo(cuenta.getId(), nuevoSaldo);
+            cuenta.setSaldo(nuevoSaldo);
 
-            Movimiento movimiento = new Movimiento(cuenta.getId(), "CARGO", monto, descripcion);
+            Movimiento movimiento = new Movimiento(
+                    cuenta.getId(),
+                    "CARGO",
+                    monto,
+                    saldoAnterior,
+                    nuevoSaldo,
+                    descripcion,
+                    factura.getSolicitudId());
             MovimientoMySQLRepository.getInstance().crear(movimiento);
         }
     }

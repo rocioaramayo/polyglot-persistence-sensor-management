@@ -145,10 +145,19 @@ public class SolicitudProcesoService {
         // Si tenemos un usuario numÃƒÂ©rico, actualizar cuenta y crear movimiento
         CuentaCorriente cuenta = CuentaService.getInstance().obtenerOCrearCuenta(usuarioIdCanonical);
         if (cuenta != null) {
-            Double nuevoSaldo = cuenta.getSaldo() - monto;
+            double saldoAnterior = cuenta.getSaldo() != null ? cuenta.getSaldo() : 0.0;
+            double nuevoSaldo = saldoAnterior - monto;
             CuentaMySQLRepository.getInstance().actualizarSaldo(cuenta.getId(), nuevoSaldo);
+            cuenta.setSaldo(nuevoSaldo);
 
-            Movimiento mov = new Movimiento(cuenta.getId(), "CARGO", monto, "Factura por solicitud " + solicitudId);
+            Movimiento mov = new Movimiento(
+                    cuenta.getId(),
+                    "CARGO",
+                    monto,
+                    saldoAnterior,
+                    nuevoSaldo,
+                    "Factura por solicitud " + solicitudId,
+                    solicitudId);
             MovimientoMySQLRepository.getInstance().crear(mov);
         }
 

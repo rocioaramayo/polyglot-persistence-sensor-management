@@ -64,9 +64,12 @@ public class CuentaService {
         double saldoActual = cuenta.getSaldo() != null ? cuenta.getSaldo() : 0.0;
         double nuevoSaldo = saldoActual + monto;
         CuentaMySQLRepository.getInstance().actualizarSaldo(cuenta.getId(), nuevoSaldo);
+        cuenta.setSaldo(nuevoSaldo);
 
-        Movimiento movimiento = new Movimiento(cuenta.getId(), "ABONO", monto,
-                referencia != null && !referencia.isBlank() ? referencia : "Depósito en cuenta corriente");
+        String descripcion = referencia != null && !referencia.isBlank()
+                ? referencia : "Depósito en cuenta corriente";
+        Movimiento movimiento = new Movimiento(cuenta.getId(), "ABONO", monto, saldoActual, nuevoSaldo,
+                descripcion, referencia);
         MovimientoMySQLRepository.getInstance().crear(movimiento);
     }
 
@@ -94,8 +97,9 @@ public class CuentaService {
         }
 
         CuentaMySQLRepository.getInstance().actualizarSaldo(cuenta.getId(), nuevoSaldo);
+        cuenta.setSaldo(nuevoSaldo);
         Movimiento movimiento = new Movimiento(cuenta.getId(), "PAGO", factura.getMonto(),
-                "Pago factura #" + facturaId);
+                saldoDisponible, nuevoSaldo, "Pago factura #" + facturaId, String.valueOf(facturaId));
         MovimientoMySQLRepository.getInstance().crear(movimiento);
 
         Pago pago = new Pago(facturaId, usuarioId, factura.getMonto(), metodoPago != null ? metodoPago : "SALDO_CUENTA");
