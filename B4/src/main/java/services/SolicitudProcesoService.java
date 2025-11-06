@@ -89,7 +89,7 @@ public class SolicitudProcesoService {
         SolicitudProcesoMongoDAO dao4 = new SolicitudProcesoMongoDAO();
         dao4.actualizarEstado(solicitudId, "COMPLETADO");
 
-        // generar factura en MySQL basada en el costo del proceso
+        // generar resultado y guardar; luego factura
         Proceso proceso = null;
         try {
             ProcesoMongoDAO pm = new ProcesoMongoDAO();
@@ -98,7 +98,7 @@ public class SolicitudProcesoService {
             // si no se puede obtener proceso, usamos monto por defecto
         }
 
-        String resultadoGenerado = null;
+                String resultadoGenerado = null;
         String observacionesGeneradas = null;
         if (proceso != null) {
             try {
@@ -110,10 +110,10 @@ public class SolicitudProcesoService {
                 }
             } catch (ErrorConexionCassandraException | ErrorConexionMongoException ex) {
                 System.err.println("No se pudo generar informe para la solicitud " + solicitudId + ": " + ex.getMessage());
-                observacionesGeneradas = "No se pudo generar el informe automÃ¡tico: " + ex.getMessage();
+                observacionesGeneradas = "No se pudo generar el informe automatico: " + ex.getMessage();
             }
         } else {
-            observacionesGeneradas = "No se encontrÃ³ la definiciÃ³n del proceso asociado (" + s.getProcesoId() + ").";
+            observacionesGeneradas = "No se encontro la definicion del proceso asociado (" + s.getProcesoId() + ").";
         }
 
         if (resultadoGenerado != null || observacionesGeneradas != null) {
@@ -122,7 +122,7 @@ public class SolicitudProcesoService {
             s.setObservaciones(observacionesGeneradas);
         }
 
-        Double monto = proceso != null && proceso.getCosto() != null ? proceso.getCosto() : 0.0;
+        Double monto =  proceso != null && proceso.getCosto() != null ? proceso.getCosto() : 0.0;
 
         Integer usuarioIdInt = null;
         try { usuarioIdInt = Integer.parseInt(s.getUsuarioId()); } catch (Exception e) { usuarioIdInt = null; }
@@ -261,5 +261,8 @@ public class SolicitudProcesoService {
         }
     }
 }
+
+
+
 
 

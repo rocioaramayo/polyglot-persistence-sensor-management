@@ -65,6 +65,22 @@ public class FacturaMySQLRepository {
         return facturas;
     }
 
+    public List<Factura> obtenerPorSolicitudId(String solicitudId) throws ErrorConexionMySQLException {
+        List<Factura> facturas = new ArrayList<>();
+        String sql = "SELECT * FROM facturas WHERE solicitud_id = ?";
+        try (Connection conn = MySQLPool.getInstance().getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, solicitudId);
+            ResultSet rs = stmt.executeQuery();
+            while (rs.next()) {
+                facturas.add(mapearFactura(rs));
+            }
+        } catch (SQLException e) {
+            throw new ErrorConexionMySQLException("Error al obtener facturas por solicitud", e);
+        }
+        return facturas;
+    }
+
     public Factura obtenerPorId(Integer facturaId) throws ErrorConexionMySQLException {
         String sql = "SELECT * FROM facturas WHERE id = ?";
         try (Connection conn = MySQLPool.getInstance().getConnection();
@@ -95,6 +111,7 @@ public class FacturaMySQLRepository {
     private Factura mapearFactura(ResultSet rs) throws SQLException {
         Factura factura = new Factura();
         factura.setId(rs.getInt("id"));
+        try { factura.setSolicitudId(rs.getString("solicitud_id")); } catch (Exception ignored) {}
         Object uidObj = rs.getObject("usuario_id");
         if (uidObj != null) {
             factura.setUsuarioId(rs.getInt("usuario_id"));
