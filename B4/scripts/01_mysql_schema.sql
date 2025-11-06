@@ -10,7 +10,7 @@ USE polyglot_db;
 -- Gestiona el saldo y límite de crédito de cada usuario
 CREATE TABLE IF NOT EXISTS cuentas_corrientes (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    usuario_id INT UNIQUE NOT NULL,
+    usuario_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin UNIQUE NOT NULL,
     saldo DECIMAL(10, 2) DEFAULT 0.00,
     limite_credito DECIMAL(10, 2) DEFAULT 5000.00,
     fecha_apertura DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS facturas (
 CREATE TABLE IF NOT EXISTS pagos (
     id INT PRIMARY KEY AUTO_INCREMENT,
     factura_id INT NOT NULL,
-    usuario_id INT NOT NULL,
+    usuario_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     monto DECIMAL(10, 2) NOT NULL,
     fecha_pago DATETIME DEFAULT CURRENT_TIMESTAMP,
     metodo_pago VARCHAR(50),

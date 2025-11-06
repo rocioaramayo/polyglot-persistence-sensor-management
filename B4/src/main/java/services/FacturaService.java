@@ -26,11 +26,7 @@ public class FacturaService {
         FacturaMySQLRepository.getInstance().crear(factura);
 
         // Registrar cargo en cuenta corriente
-        Integer usuarioIdInt = null;
-        try { usuarioIdInt = Integer.parseInt(usuarioId); } catch (Exception ignored) {}
-        CuentaCorriente cuenta = usuarioIdInt != null
-                ? CuentaMySQLRepository.getInstance().obtenerPorUsuario(usuarioIdInt)
-                : null;
+        CuentaCorriente cuenta = CuentaService.getInstance().obtenerOCrearCuenta(usuarioId);
         if (cuenta != null) {
             Double nuevoSaldo = cuenta.getSaldo() - monto;
             CuentaMySQLRepository.getInstance().actualizarSaldo(cuenta.getId(), nuevoSaldo);

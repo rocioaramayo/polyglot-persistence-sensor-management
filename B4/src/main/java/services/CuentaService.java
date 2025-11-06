@@ -26,7 +26,10 @@ public class CuentaService {
         return instance;
     }
 
-    public CuentaCorriente obtenerOCrearCuenta(Integer usuarioId) throws ErrorConexionMySQLException {
+    public CuentaCorriente obtenerOCrearCuenta(String usuarioId) throws ErrorConexionMySQLException {
+        if (usuarioId == null || usuarioId.isBlank()) {
+            return null;
+        }
         CuentaCorriente cuenta = CuentaMySQLRepository.getInstance().obtenerPorUsuario(usuarioId);
         if (cuenta == null) {
             cuenta = new CuentaCorriente(usuarioId);
@@ -40,11 +43,10 @@ public class CuentaService {
     }
 
     public CuentaCorriente obtenerCuentaUsuario(String usuarioId) throws ErrorConexionMySQLException {
-        Integer id = parseUsuarioId(usuarioId);
-        if (id == null) {
+        if (usuarioId == null || usuarioId.isBlank()) {
             return null;
         }
-        CuentaCorriente cuenta = CuentaMySQLRepository.getInstance().obtenerPorUsuario(id);
+        CuentaCorriente cuenta = CuentaMySQLRepository.getInstance().obtenerPorUsuario(usuarioId);
         if (cuenta != null && cuenta.getLimite() == null) {
             cuenta.setLimite(1000.0);
         }
@@ -55,11 +57,10 @@ public class CuentaService {
         if (monto <= 0) {
             throw new IllegalArgumentException("El monto debe ser mayor a cero");
         }
-        Integer id = parseUsuarioId(usuarioId);
-        if (id == null) {
+        CuentaCorriente cuenta = obtenerOCrearCuenta(usuarioId);
+        if (cuenta == null) {
             throw new IllegalStateException("El usuario no tiene una cuenta corriente en MySQL");
         }
-        CuentaCorriente cuenta = obtenerOCrearCuenta(id);
         double saldoActual = cuenta.getSaldo() != null ? cuenta.getSaldo() : 0.0;
         double nuevoSaldo = saldoActual + monto;
         CuentaMySQLRepository.getInstance().actualizarSaldo(cuenta.getId(), nuevoSaldo);
@@ -71,11 +72,10 @@ public class CuentaService {
 
     public void pagarFactura(String usuarioId, int facturaId, String metodoPago)
             throws ErrorConexionMySQLException, SQLException {
-        Integer id = parseUsuarioId(usuarioId);
-        if (id == null) {
+        CuentaCorriente cuenta = obtenerOCrearCuenta(usuarioId);
+        if (cuenta == null) {
             throw new IllegalStateException("El usuario no tiene una cuenta corriente en MySQL");
         }
-        CuentaCorriente cuenta = obtenerOCrearCuenta(id);
         Factura factura = FacturaMySQLRepository.getInstance().obtenerPorId(facturaId);
         if (factura == null) {
             throw new IllegalArgumentException("Factura no encontrada");
@@ -98,18 +98,17 @@ public class CuentaService {
                 "Pago factura #" + facturaId);
         MovimientoMySQLRepository.getInstance().crear(movimiento);
 
-        Pago pago = new Pago(facturaId, id, factura.getMonto(), metodoPago != null ? metodoPago : "SALDO_CUENTA");
+        Pago pago = new Pago(facturaId, usuarioId, factura.getMonto(), metodoPago != null ? metodoPago : "SALDO_CUENTA");
         PagoMySQLRepository.getInstance().insertar(pago);
 
         FacturaMySQLRepository.getInstance().actualizarEstado(facturaId, "pagada");
     }
 
     public List<Movimiento> obtenerMovimientos(String usuarioId) throws ErrorConexionMySQLException {
-        Integer id = parseUsuarioId(usuarioId);
-        if (id == null) {
+        if (usuarioId == null || usuarioId.isBlank()) {
             return Collections.emptyList();
         }
-        CuentaCorriente cuenta = CuentaMySQLRepository.getInstance().obtenerPorUsuario(id);
+        CuentaCorriente cuenta = CuentaMySQLRepository.getInstance().obtenerPorUsuario(usuarioId);
         if (cuenta == null) {
             return Collections.emptyList();
         }
@@ -121,14 +120,5 @@ public class CuentaService {
             return Collections.emptyList();
         }
         return FacturaMySQLRepository.getInstance().obtenerPorUsuario(usuarioId);
-    }
-
-    private Integer parseUsuarioId(String usuarioId) {
-        if (usuarioId == null) return null;
-        try {
-            return Integer.parseInt(usuarioId);
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 }

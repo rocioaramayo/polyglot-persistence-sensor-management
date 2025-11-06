@@ -21,7 +21,7 @@ public class CuentaMySQLRepository {
         String sql = "INSERT INTO cuentas_corrientes (usuario_id, saldo) VALUES (?, ?)";
         try (Connection conn = MySQLPool.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, cuenta.getUsuarioId());
+            stmt.setString(1, cuenta.getUsuarioId());
             stmt.setDouble(2, cuenta.getSaldo());
             stmt.executeUpdate();
         } catch (SQLException e) {
@@ -29,16 +29,16 @@ public class CuentaMySQLRepository {
         }
     }
 
-    public CuentaCorriente obtenerPorUsuario(Integer usuarioId) throws ErrorConexionMySQLException {
+    public CuentaCorriente obtenerPorUsuario(String usuarioId) throws ErrorConexionMySQLException {
         String sql = "SELECT * FROM cuentas_corrientes WHERE usuario_id = ?";
         try (Connection conn = MySQLPool.getInstance().getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, usuarioId);
+            stmt.setString(1, usuarioId);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 CuentaCorriente cuenta = new CuentaCorriente();
                 cuenta.setId(rs.getInt("id"));
-                cuenta.setUsuarioId(rs.getInt("usuario_id"));
+                cuenta.setUsuarioId(rs.getString("usuario_id"));
                 cuenta.setSaldo(rs.getDouble("saldo"));
                 // Limite no está persistido; por defecto mantenemos crédito habilitado
                 cuenta.setLimite(1000.0);

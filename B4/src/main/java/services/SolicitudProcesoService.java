@@ -125,8 +125,6 @@ public class SolicitudProcesoService {
         Double monto =  proceso != null && proceso.getCosto() != null ? proceso.getCosto() : 0.0;
 
         String usuarioIdCanonical = s.getUsuarioId();
-        Integer usuarioIdInt = null;
-        try { usuarioIdInt = usuarioIdCanonical != null ? Integer.parseInt(usuarioIdCanonical) : null; } catch (Exception e) { usuarioIdInt = null; }
 
         // Crear factura en MySQL usando identificador canónico del usuario
         Factura factura = new Factura(usuarioIdCanonical, monto, "Factura por solicitud " + solicitudId);
@@ -145,21 +143,13 @@ public class SolicitudProcesoService {
         FacturaMySQLRepository.getInstance().crear(factura);
 
         // Si tenemos un usuario numÃ©rico, actualizar cuenta y crear movimiento
-        if (usuarioIdInt != null) {
-            CuentaCorriente cuenta = CuentaMySQLRepository.getInstance().obtenerPorUsuario(usuarioIdInt);
-            if (cuenta == null) {
-                cuenta = new CuentaCorriente(usuarioIdInt);
-                CuentaMySQLRepository.getInstance().crear(cuenta);
-                // volver a leer para obtener id
-                cuenta = CuentaMySQLRepository.getInstance().obtenerPorUsuario(usuarioIdInt);
-            }
-            if (cuenta != null) {
-                Double nuevoSaldo = cuenta.getSaldo() - monto;
-                CuentaMySQLRepository.getInstance().actualizarSaldo(cuenta.getId(), nuevoSaldo);
+        CuentaCorriente cuenta = CuentaService.getInstance().obtenerOCrearCuenta(usuarioIdCanonical);
+        if (cuenta != null) {
+            Double nuevoSaldo = cuenta.getSaldo() - monto;
+            CuentaMySQLRepository.getInstance().actualizarSaldo(cuenta.getId(), nuevoSaldo);
 
-                Movimiento mov = new Movimiento(cuenta.getId(), "CARGO", monto, "Factura por solicitud " + solicitudId);
-                MovimientoMySQLRepository.getInstance().crear(mov);
-            }
+            Movimiento mov = new Movimiento(cuenta.getId(), "CARGO", monto, "Factura por solicitud " + solicitudId);
+            MovimientoMySQLRepository.getInstance().crear(mov);
         }
 
         // Crear alerta y mensaje para notificar al usuario que su informe estÃ¡ listo

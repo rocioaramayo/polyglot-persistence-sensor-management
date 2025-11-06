@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 public class Pago {
     private Integer id;
     private Integer facturaId;
-    private Integer usuarioId;
+    private String usuarioId;
     private Double monto;
     private LocalDateTime fechaPago;
     private String metodoPago;
@@ -14,7 +14,7 @@ public class Pago {
 
     public Pago() {}
 
-    public Pago(Integer facturaId, Integer usuarioId, Double monto, String metodoPago) {
+    public Pago(Integer facturaId, String usuarioId, Double monto, String metodoPago) {
         this.facturaId = facturaId;
         this.usuarioId = usuarioId;
         this.monto = monto;
@@ -30,8 +30,8 @@ public class Pago {
     public Integer getFacturaId() { return facturaId; }
     public void setFacturaId(Integer facturaId) { this.facturaId = facturaId; }
 
-    public Integer getUsuarioId() { return usuarioId; }
-    public void setUsuarioId(Integer usuarioId) { this.usuarioId = usuarioId; }
+    public String getUsuarioId() { return usuarioId; }
+    public void setUsuarioId(String usuarioId) { this.usuarioId = usuarioId; }
 
     public Double getMonto() { return monto; }
     public void setMonto(Double monto) { this.monto = monto; }

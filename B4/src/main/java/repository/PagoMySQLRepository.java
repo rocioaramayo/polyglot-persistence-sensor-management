@@ -28,7 +28,7 @@ public class PagoMySQLRepository {
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             
             stmt.setInt(1, pago.getFacturaId());
-            stmt.setInt(2, pago.getUsuarioId());
+            stmt.setString(2, pago.getUsuarioId());
             stmt.setDouble(3, pago.getMonto());
             stmt.setTimestamp(4, Timestamp.valueOf(pago.getFechaPago()));
             stmt.setString(5, pago.getMetodoPago());
@@ -59,7 +59,7 @@ public class PagoMySQLRepository {
                     Pago pago = new Pago();
                     pago.setId(rs.getInt("id"));
                     pago.setFacturaId(rs.getInt("factura_id"));
-                    pago.setUsuarioId(rs.getInt("usuario_id"));
+                    pago.setUsuarioId(rs.getString("usuario_id"));
                     pago.setMonto(rs.getDouble("monto"));
                     pago.setFechaPago(rs.getTimestamp("fecha_pago").toLocalDateTime());
                     pago.setMetodoPago(rs.getString("metodo_pago"));
