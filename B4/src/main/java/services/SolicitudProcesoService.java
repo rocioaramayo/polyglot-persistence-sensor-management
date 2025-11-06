@@ -126,7 +126,7 @@ public class SolicitudProcesoService {
 
         String usuarioIdCanonical = s.getUsuarioId();
 
-        // Crear factura en MySQL usando identificador canónico del usuario
+        // Crear factura en MySQL usando identificador canÃ³nico del usuario
         Factura factura = new Factura(usuarioIdCanonical, monto, "Factura por solicitud " + solicitudId);
         factura.setSolicitudId(solicitudId);
         try {
@@ -138,11 +138,11 @@ public class SolicitudProcesoService {
                 factura.setTelefonoFacturacion(usuario.getTelefono());
             }
         } catch (ErrorConexionMongoException ex) {
-            System.err.println("No se pudo obtener informaciÃ³n adicional del usuario " + s.getUsuarioId() + ": " + ex.getMessage());
+            System.err.println("No se pudo obtener informaciÃƒÂ³n adicional del usuario " + s.getUsuarioId() + ": " + ex.getMessage());
         }
         FacturaMySQLRepository.getInstance().crear(factura);
 
-        // Si tenemos un usuario numÃ©rico, actualizar cuenta y crear movimiento
+        // Si tenemos un usuario numÃƒÂ©rico, actualizar cuenta y crear movimiento
         CuentaCorriente cuenta = CuentaService.getInstance().obtenerOCrearCuenta(usuarioIdCanonical);
         if (cuenta != null) {
             Double nuevoSaldo = cuenta.getSaldo() - monto;
@@ -152,9 +152,9 @@ public class SolicitudProcesoService {
             MovimientoMySQLRepository.getInstance().crear(mov);
         }
 
-        // Crear alerta y mensaje para notificar al usuario que su informe estÃ¡ listo
+        // Crear alerta y mensaje para notificar al usuario que su informe estÃƒÂ¡ listo
         try {
-            Alerta alerta = new Alerta("PROCESO_COMPLETADO", "Su informe para la solicitud " + solicitudId + " estÃ¡ listo.", "MEDIA");
+            Alerta alerta = new Alerta("PROCESO_COMPLETADO", "Su informe para la solicitud " + solicitudId + " estÃƒÂ¡ listo.", "MEDIA");
             // usuarioId en Solicitud es String (Mongo id), preferimos notificar con ese id
             alerta.setUsuarioId(s.getUsuarioId());
             AlertaMongoDAO alertaDao = new AlertaMongoDAO();
@@ -162,13 +162,13 @@ public class SolicitudProcesoService {
 
             Mensaje mensaje = new Mensaje();
             mensaje.setId(java.util.UUID.randomUUID().toString());
-            mensaje.setRemitente("system"); // sistema como id simbÃ³lico
+            mensaje.setRemitente("system"); // sistema como id simbÃƒÂ³lico
             mensaje.setDestinatario(s.getUsuarioId());
             mensaje.setContenido("Su informe solicitado (" + solicitudId + ") ha sido completado.");
             mensaje.setTipo("PRIVADO");
             MensajeMongoDAO.getInstance().crear(mensaje);
         } catch (Exception e) {
-            // si falla la notificaciÃ³n, no impedir el flujo principal
+            // si falla la notificaciÃƒÂ³n, no impedir el flujo principal
         }
     }
 
@@ -252,6 +252,7 @@ public class SolicitudProcesoService {
         }
     }
 }
+
 
 
 
