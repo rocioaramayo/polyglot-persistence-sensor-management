@@ -213,6 +213,29 @@ public class SolicitudProcesoService {
         dao.actualizarEstado(solicitudId, "RECHAZADO");
     }
 
+    public void cancelarSolicitudUsuario(String solicitudId, String usuarioId) throws ErrorConexionMongoException {
+        if (solicitudId == null || solicitudId.isBlank()) {
+            throw new IllegalArgumentException("ID de solicitud requerido para cancelar.");
+        }
+        validarUUID(solicitudId);
+        SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
+        SolicitudProceso solicitud = dao.buscarPorId(solicitudId);
+        if (solicitud == null) {
+            throw new IllegalStateException("Solicitud no encontrada.");
+        }
+        if (usuarioId == null || !usuarioId.equals(solicitud.getUsuarioId())) {
+            throw new IllegalStateException("No podés cancelar una solicitud de otro usuario.");
+        }
+        String estado = solicitud.getEstado() != null ? solicitud.getEstado().toUpperCase() : "";
+        if ("COMPLETADO".equals(estado) || "EN_EJECUCION".equals(estado)) {
+            throw new IllegalStateException("No podés cancelar una solicitud que ya se ejecutó o está en ejecución.");
+        }
+        if ("CANCELADO".equals(estado)) {
+            return;
+        }
+        dao.actualizarEstado(solicitudId, "CANCELADO");
+    }
+
     public List<SolicitudProceso> listarPorUsuario(String usuarioId) throws ErrorConexionMongoException {
         if (usuarioId == null || usuarioId.isBlank()) {
             return Collections.emptyList();

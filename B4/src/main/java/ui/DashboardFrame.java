@@ -49,6 +49,7 @@ public class DashboardFrame extends JFrame {
     private DefaultTableModel informesModel;
     private JTable informesTable;
     private final Map<String, SolicitudProceso> informesCache = new HashMap<>();
+    private final Map<String, SolicitudProceso> solicitudesCache = new HashMap<>();
 
     private JLabel saldoLabel;
     private JTextField depositoField;
@@ -845,7 +846,11 @@ public class DashboardFrame extends JFrame {
         tablaPanel.add(new JScrollPane(solicitudesTable), BorderLayout.CENTER);
         JButton refrescarBtn = new JButton("Refrescar");
         refrescarBtn.addActionListener(e -> refrescarSolicitudesUsuario());
+        JButton cancelarBtn = new JButton("Cancelar seleccionada");
+        cancelarBtn.addActionListener(e -> cancelarSolicitudSeleccionada());
+
         JPanel accionesTabla = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        accionesTabla.add(cancelarBtn);
         accionesTabla.add(refrescarBtn);
         tablaPanel.add(accionesTabla, BorderLayout.SOUTH);
 
@@ -935,10 +940,12 @@ public class DashboardFrame extends JFrame {
             return;
         }
         solicitudesModel.setRowCount(0);
+        solicitudesCache.clear();
         try {
             List<SolicitudProceso> solicitudes = SolicitudProcesoService.getInstance()
                     .listarPorUsuario(usuarioActual.getId());
             for (SolicitudProceso sp : solicitudes) {
+                solicitudesCache.put(sp.getId(), sp);
                 Map<String, Object> params = sp.getParametros();
                 String sensor = extraerParametro(params, "sensorId");
                 String detalleResultado = "";
@@ -966,6 +973,50 @@ public class DashboardFrame extends JFrame {
                     "Error", JOptionPane.ERROR_MESSAGE);
         }
         refrescarInformes();
+    }
+
+    private void cancelarSolicitudSeleccionada() {
+        if (solicitudesTable == null || solicitudesModel == null) {
+            return;
+        }
+        int viewRow = solicitudesTable.getSelectedRow();
+        if (viewRow < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccioná una solicitud para cancelar.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int modelRow = solicitudesTable.convertRowIndexToModel(viewRow);
+        String id = (String) solicitudesModel.getValueAt(modelRow, 0);
+        SolicitudProceso sp = solicitudesCache.get(id);
+        if (sp == null) {
+            JOptionPane.showMessageDialog(this, "No se pudo obtener la solicitud seleccionada.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        String estado = sp.getEstado() != null ? sp.getEstado() : "";
+        if ("COMPLETADO".equalsIgnoreCase(estado) || "EN_EJECUCION".equalsIgnoreCase(estado)) {
+            JOptionPane.showMessageDialog(this, "No podés cancelar una solicitud que ya se ejecutó o está en ejecución.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if ("CANCELADO".equalsIgnoreCase(estado)) {
+            JOptionPane.showMessageDialog(this, "La solicitud ya está cancelada.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "¿Confirmás cancelar la solicitud " + id + "?",
+                "Confirmar cancelación",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        try {
+            SolicitudProcesoService.getInstance().cancelarSolicitudUsuario(id, usuarioActual.getId());
+            JOptionPane.showMessageDialog(this, "Solicitud cancelada.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+            refrescarSolicitudesUsuario();
+        } catch (IllegalStateException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
+        } catch (ErrorConexionMongoException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo cancelar la solicitud: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void refrescarInformes() {
