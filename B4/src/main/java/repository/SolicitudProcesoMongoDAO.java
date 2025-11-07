@@ -132,6 +132,10 @@ public class SolicitudProcesoMongoDAO {
     public List<SolicitudProceso> listarPorTecnico(String tecnicoId) {
         List<SolicitudProceso> solicitudes = new ArrayList<>();
         for (Document doc : collection.find(Filters.eq("tecnico_asignado_id", tecnicoId))) {
+            String origen = doc.getString("origen");
+            if (origen != null && "AUTOMATICO".equalsIgnoreCase(origen)) {
+                continue;
+            }
             SolicitudProceso solicitud = new SolicitudProceso();
             Object rawId = doc.get("_id");
             solicitud.setId(rawId != null ? rawId.toString() : null);
@@ -156,6 +160,10 @@ public class SolicitudProcesoMongoDAO {
     public List<SolicitudProceso> listarPendientes() {
         List<SolicitudProceso> solicitudes = new ArrayList<>();
         for (Document doc : collection.find(Filters.eq("estado", "PENDIENTE"))) {
+            String origen = doc.getString("origen");
+            if (origen != null && "AUTOMATICO".equalsIgnoreCase(origen)) {
+                continue;
+            }
             SolicitudProceso solicitud = new SolicitudProceso();
             Object rawId = doc.get("_id");
             solicitud.setId(rawId != null ? rawId.toString() : null);

@@ -10,6 +10,7 @@ import modelo.SolicitudProceso;
 import modelo.Usuario;
 import repository.ProcesoMongoDAO;
 import services.AuthService;
+import services.ConsultasPeriodicasService;
 import services.SensorService;
 import services.SolicitudProcesoService;
 import services.UsuarioService;
@@ -200,10 +201,14 @@ public class TecnicoFrame extends JFrame {
         JButton completarBtn = new JButton("Marcar completada");
         completarBtn.addActionListener(e -> completarAsignadaSeleccionada());
 
+        JButton agendarBtn = new JButton("Agregar a lista periódica");
+        agendarBtn.addActionListener(e -> agendarAsignadaSeleccionada());
+
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         acciones.add(refrescarBtn);
         acciones.add(iniciarBtn);
         acciones.add(completarBtn);
+        acciones.add(agendarBtn);
         panel.add(acciones, BorderLayout.SOUTH);
         return panel;
     }
@@ -512,6 +517,33 @@ public class TecnicoFrame extends JFrame {
             refrescarPendientes();
         } catch (ErrorConexionMongoException | ErrorConexionMySQLException e) {
             JOptionPane.showMessageDialog(this, "No se pudo completar la solicitud: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void agendarAsignadaSeleccionada() {
+        int row = asignadasTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione una solicitud para agendar.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int modelRow = asignadasTable.convertRowIndexToModel(row);
+        String id = (String) asignadasModel.getValueAt(modelRow, 0);
+        SolicitudProceso sp = solicitudCache.get(id);
+        if (sp == null) {
+            JOptionPane.showMessageDialog(this, "No se pudo localizar la solicitud seleccionada.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (sp.getParametros() == null || sp.getParametros().get("periodicidad") == null) {
+            JOptionPane.showMessageDialog(this, "La solicitud no define una periodicidad. Completá ese dato antes de agendarla.", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            ConsultasPeriodicasService.getInstance().agendarDesdeSolicitud(id, usuarioActual.getId());
+            JOptionPane.showMessageDialog(this, "Solicitud agregada a la lista de ejecución periódica.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IllegalStateException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
+        } catch (ErrorConexionMongoException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo agendar la solicitud: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 

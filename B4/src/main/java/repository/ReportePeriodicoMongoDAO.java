@@ -33,6 +33,7 @@ public class ReportePeriodicoMongoDAO {
         doc.append("tipo_proceso", reporte.getTipoProceso());
         doc.append("parametros", reporte.getParametros());
         doc.append("solicitud_id", reporte.getSolicitudId());
+        doc.append("programacion_id", reporte.getProgramacionId());
         doc.append("resultado", reporte.getResultado());
         doc.append("observaciones", reporte.getObservaciones());
         doc.append("estado", reporte.getEstado());
@@ -73,6 +74,7 @@ public class ReportePeriodicoMongoDAO {
         reporte.setProcesoId(doc.getString("proceso_id"));
         reporte.setTipoProceso(doc.getString("tipo_proceso"));
         reporte.setSolicitudId(doc.getString("solicitud_id"));
+        reporte.setProgramacionId(doc.getString("programacion_id"));
         Document paramsDoc = doc.get("parametros", Document.class);
         if (paramsDoc != null) {
             reporte.setParametros(paramsDoc);

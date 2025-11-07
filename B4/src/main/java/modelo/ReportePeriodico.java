@@ -9,6 +9,7 @@ public class ReportePeriodico {
     private String procesoId;
     private String tipoProceso;
     private String solicitudId;
+    private String programacionId;
     private Map<String, Object> parametros;
     private String resultado;
     private String observaciones;
@@ -54,6 +55,14 @@ public class ReportePeriodico {
 
     public void setSolicitudId(String solicitudId) {
         this.solicitudId = solicitudId;
+    }
+
+    public String getProgramacionId() {
+        return programacionId;
+    }
+
+    public void setProgramacionId(String programacionId) {
+        this.programacionId = programacionId;
     }
 
     public Map<String, Object> getParametros() {

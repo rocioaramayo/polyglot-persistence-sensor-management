@@ -11,8 +11,11 @@ import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 
 public class DashboardFrame extends JFrame {
@@ -36,12 +39,12 @@ public class DashboardFrame extends JFrame {
 
     private JComboBox<ProcesoItem> procesosCombo;
     private JTextArea detalleProcesoArea;
-    private JTextField ciudadField;
+    private JComboBox<String> ciudadCombo;
     private JTextField zonaField;
-    private JTextField paisField;
+    private JComboBox<String> paisCombo;
     private JTextField fechaInicioField;
     private JTextField fechaFinField;
-    private JTextField periodicidadField;
+    private JComboBox<String> periodicidadCombo;
     private JTextField observacionesField;
     private JComboBox<String> tipoSensorCombo;
     private DefaultTableModel solicitudesModel;
@@ -50,6 +53,8 @@ public class DashboardFrame extends JFrame {
     private JTable informesTable;
     private final Map<String, SolicitudProceso> informesCache = new HashMap<>();
     private final Map<String, SolicitudProceso> solicitudesCache = new HashMap<>();
+    private final List<String> ciudadesSensores = new ArrayList<>();
+    private final List<String> paisesSensores = new ArrayList<>();
 
     private JLabel saldoLabel;
     private JTextField depositoField;
@@ -78,6 +83,7 @@ public class DashboardFrame extends JFrame {
         }
 
         cargarProcesosDisponibles();
+        cargarUbicacionesSensores();
 
         tabbedPane = new JTabbedPane();
         // La gestión de sensores se realiza solo en AdminFrame
@@ -111,6 +117,34 @@ public class DashboardFrame extends JFrame {
         } catch (ErrorConexionMongoException e) {
             procesosDisponibles = new ArrayList<>();
             System.err.println("No se pudieron cargar los procesos disponibles: " + e.getMessage());
+        }
+    }
+
+    private void cargarUbicacionesSensores() {
+        ciudadesSensores.clear();
+        paisesSensores.clear();
+        try {
+            List<Sensor> sensores = SensorService.getInstance().listarTodos();
+            Set<String> ciudades = new LinkedHashSet<>();
+            Set<String> paises = new LinkedHashSet<>();
+            for (Sensor sensor : sensores) {
+                if (sensor.getCiudad() != null && !sensor.getCiudad().isBlank()) {
+                    ciudades.add(sensor.getCiudad().trim());
+                }
+                if (sensor.getPais() != null && !sensor.getPais().isBlank()) {
+                    paises.add(sensor.getPais().trim());
+                }
+            }
+            ciudadesSensores.addAll(ciudades);
+            paisesSensores.addAll(paises);
+            if (ciudadCombo != null) {
+                actualizarOpcionesCombo(ciudadCombo, ciudadesSensores);
+            }
+            if (paisCombo != null) {
+                actualizarOpcionesCombo(paisCombo, paisesSensores);
+            }
+        } catch (ErrorConexionCassandraException e) {
+            System.err.println("No se pudieron cargar ubicaciones de sensores: " + e.getMessage());
         }
     }
 
@@ -750,12 +784,12 @@ public class DashboardFrame extends JFrame {
         detalleProcesoArea.setWrapStyleWord(true);
         detalleProcesoArea.setEditable(false);
 
-        ciudadField = new JTextField(18);
+        ciudadCombo = crearComboUbicacion(ciudadesSensores);
         zonaField = new JTextField(18);
-        paisField = new JTextField(18);
+        paisCombo = crearComboUbicacion(paisesSensores);
         fechaInicioField = new JTextField(12);
         fechaFinField = new JTextField(12);
-        periodicidadField = new JTextField(12);
+        periodicidadCombo = new JComboBox<>(new String[]{"(sin selección)", "Diaria", "Semanal", "Mensual", "Trimestral", "Anual"});
         observacionesField = new JTextField(25);
         tipoSensorCombo = new JComboBox<>(new String[]{"AUTO", "Temperatura", "Humedad"});
 
@@ -775,7 +809,7 @@ public class DashboardFrame extends JFrame {
         gbc.gridy++;
         formulario.add(new JLabel("Ciudad:"), gbc);
         gbc.gridx = 1;
-        formulario.add(ciudadField, gbc);
+        formulario.add(ciudadCombo, gbc);
 
         gbc.gridx = 0;
         gbc.gridy++;
@@ -787,7 +821,7 @@ public class DashboardFrame extends JFrame {
         gbc.gridy++;
         formulario.add(new JLabel("País:"), gbc);
         gbc.gridx = 1;
-        formulario.add(paisField, gbc);
+        formulario.add(paisCombo, gbc);
 
         gbc.gridx = 0;
         gbc.gridy++;
@@ -809,9 +843,9 @@ public class DashboardFrame extends JFrame {
 
         gbc.gridx = 0;
         gbc.gridy++;
-        formulario.add(new JLabel("Periodicidad (ej. mensual):"), gbc);
+        formulario.add(new JLabel("Periodicidad (opcional):"), gbc);
         gbc.gridx = 1;
-        formulario.add(periodicidadField, gbc);
+        formulario.add(periodicidadCombo, gbc);
 
         gbc.gridx = 0;
         gbc.gridy++;
@@ -883,12 +917,14 @@ public class DashboardFrame extends JFrame {
     }
 
     private void limpiarFormularioSolicitud() {
-        ciudadField.setText("");
+        restablecerCombo(ciudadCombo);
         zonaField.setText("");
-        paisField.setText("");
+        restablecerCombo(paisCombo);
         fechaInicioField.setText("");
         fechaFinField.setText("");
-        periodicidadField.setText("");
+        if (periodicidadCombo != null) {
+            periodicidadCombo.setSelectedIndex(0);
+        }
         observacionesField.setText("");
         if (tipoSensorCombo != null) {
             tipoSensorCombo.setSelectedIndex(0);
@@ -903,12 +939,22 @@ public class DashboardFrame extends JFrame {
         }
 
         Map<String, Object> params = new HashMap<>();
-        agregarParametro(params, "ciudad", ciudadField.getText());
+        agregarParametro(params, "ciudad", obtenerTextoCombo(ciudadCombo));
         agregarParametro(params, "zona", zonaField.getText());
-        agregarParametro(params, "pais", paisField.getText());
+        agregarParametro(params, "pais", obtenerTextoCombo(paisCombo));
         agregarParametro(params, "fechaInicio", fechaInicioField.getText());
         agregarParametro(params, "fechaFin", fechaFinField.getText());
-        agregarParametro(params, "periodicidad", periodicidadField.getText());
+        if (periodicidadCombo != null) {
+            String seleccion = (String) periodicidadCombo.getSelectedItem();
+            if (seleccion != null) {
+                String normalizada = seleccion.trim();
+                if (!normalizada.startsWith("(sin")) {
+                    agregarParametro(params, "periodicidad", normalizada.toLowerCase(Locale.ROOT));
+                } else {
+                    params.put("periodicidad", "mensual");
+                }
+            }
+        }
         agregarParametro(params, "observaciones", observacionesField.getText());
         if (item.tipo != null) {
             params.putIfAbsent("tipoProceso", item.tipo);
@@ -1216,6 +1262,54 @@ public class DashboardFrame extends JFrame {
                 params.put(clave, trimmed);
             }
         }
+    }
+
+    private JComboBox<String> crearComboUbicacion(List<String> opciones) {
+        JComboBox<String> combo = new JComboBox<>();
+        combo.setEditable(true);
+        actualizarOpcionesCombo(combo, opciones);
+        return combo;
+    }
+
+    private void actualizarOpcionesCombo(JComboBox<String> combo, List<String> opciones) {
+        if (combo == null) {
+            return;
+        }
+        combo.removeAllItems();
+        combo.addItem("(sin selección)");
+        if (opciones != null) {
+            for (String opcion : opciones) {
+                if (opcion != null && !opcion.isBlank()) {
+                    combo.addItem(opcion);
+                }
+            }
+        }
+        combo.setSelectedIndex(0);
+    }
+
+    private void restablecerCombo(JComboBox<String> combo) {
+        if (combo == null) {
+            return;
+        }
+        combo.setSelectedIndex(0);
+        if (combo.isEditable()) {
+            combo.getEditor().setItem("");
+        }
+    }
+
+    private String obtenerTextoCombo(JComboBox<String> combo) {
+        if (combo == null) {
+            return null;
+        }
+        Object seleccionado = combo.isEditable() ? combo.getEditor().getItem() : combo.getSelectedItem();
+        if (seleccionado == null) {
+            return null;
+        }
+        String texto = seleccionado.toString().trim();
+        if (texto.isEmpty() || texto.startsWith("(")) {
+            return null;
+        }
+        return texto;
     }
 
     private String extraerParametro(Map<String, Object> parametros, String clave) {
