@@ -74,8 +74,11 @@ public class SolicitudProcesoService {
         try { historial.setUsuarioId(Integer.parseInt(s.getUsuarioId())); } catch (Exception e) { historial.setUsuarioId(null); }
         try { historial.setTecnicoId(s.getTecnicoAsignadoId() != null ? Integer.parseInt(s.getTecnicoAsignadoId()) : null); } catch (Exception e) { historial.setTecnicoId(null); }
         historial.setEstado("INICIADO");
+        java.time.LocalDateTime inicio = java.time.LocalDateTime.now();
+        historial.setFechaEjecucion(inicio);
+        historial.setFechaInicio(inicio);
 
-    HistorialEjecucionCassandraDAO histDao = new HistorialEjecucionCassandraDAO();
+        HistorialEjecucionCassandraDAO histDao = new HistorialEjecucionCassandraDAO();
         histDao.insertar(historial);
     }
 
