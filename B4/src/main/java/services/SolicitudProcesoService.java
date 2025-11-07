@@ -30,6 +30,8 @@ import java.util.Map;
 public class SolicitudProcesoService {
 
     private static SolicitudProcesoService instance;
+    public static final String ORIGEN_MANUAL = "MANUAL";
+    public static final String ORIGEN_AUTOMATICO = "AUTOMATICO";
 
     private SolicitudProcesoService() {}
 
@@ -40,7 +42,18 @@ public class SolicitudProcesoService {
 
     public String crearSolicitud(String usuarioId, String procesoId, Map<String, Object> parametros)
             throws ErrorConexionMongoException {
+        return crearSolicitud(usuarioId, procesoId, parametros, ORIGEN_MANUAL);
+    }
+
+    public String crearSolicitudAutomatica(String usuarioId, String procesoId, Map<String, Object> parametros)
+            throws ErrorConexionMongoException {
+        return crearSolicitud(usuarioId, procesoId, parametros, ORIGEN_AUTOMATICO);
+    }
+
+    public String crearSolicitud(String usuarioId, String procesoId, Map<String, Object> parametros, String origen)
+            throws ErrorConexionMongoException {
         SolicitudProceso s = new SolicitudProceso(usuarioId, procesoId, parametros);
+        s.setOrigen(origen != null ? origen : ORIGEN_MANUAL);
         SolicitudProcesoMongoDAO dao = new SolicitudProcesoMongoDAO();
         return dao.insertar(s);
     }
@@ -214,7 +227,7 @@ public class SolicitudProcesoService {
         if (sensorId != null && !params.containsKey("sensorId")) {
             params.put("sensorId", sensorId);
         }
-        return crearSolicitud(usuarioId, procesoId, params);
+        return crearSolicitud(usuarioId, procesoId, params, ORIGEN_MANUAL);
     }
 
     private String seleccionarSensorParaSolicitud(Map<String, Object> parametros) throws ErrorConexionCassandraException {

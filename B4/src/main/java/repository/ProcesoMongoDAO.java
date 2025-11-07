@@ -47,6 +47,14 @@ public class ProcesoMongoDAO {
         return mapToProceso(doc);
     }
 
+    public Proceso buscarPorTipo(String tipo) {
+        if (tipo == null || tipo.isBlank()) {
+            return null;
+        }
+        Document doc = collection.find(Filters.eq("tipo", tipo)).first();
+        return mapToProceso(doc);
+    }
+
     public List<Proceso> listarActivos() {
         List<Proceso> procesos = new ArrayList<>();
         for (Document doc : collection.find(Filters.eq("activo", true))) {

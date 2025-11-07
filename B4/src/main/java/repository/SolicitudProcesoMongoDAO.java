@@ -30,7 +30,8 @@ public class SolicitudProcesoMongoDAO {
                 .append("proceso_id", solicitud.getProcesoId())
                 .append("fecha_solicitud", Date.from(solicitud.getFechaSolicitud().atZone(ZoneId.systemDefault()).toInstant()))
                 .append("estado", solicitud.getEstado())
-                .append("parametros", solicitud.getParametros());
+                .append("parametros", solicitud.getParametros())
+                .append("origen", solicitud.getOrigen());
         
         if (solicitud.getTecnicoAsignadoId() != null) {
             doc.append("tecnico_asignado_id", solicitud.getTecnicoAsignadoId());
@@ -62,6 +63,9 @@ public class SolicitudProcesoMongoDAO {
         solicitud.setUsuarioId(doc.getString("usuario_id"));
         solicitud.setProcesoId(doc.getString("proceso_id"));
         solicitud.setEstado(doc.getString("estado"));
+        if (doc.containsKey("origen")) {
+            solicitud.setOrigen(doc.getString("origen"));
+        }
         if (doc.getDate("fecha_solicitud") != null) {
             solicitud.setFechaSolicitud(doc.getDate("fecha_solicitud").toInstant()
                     .atZone(ZoneId.systemDefault()).toLocalDateTime());
@@ -116,6 +120,9 @@ public class SolicitudProcesoMongoDAO {
             if (doc.containsKey("observaciones")) {
                 solicitud.setObservaciones(doc.getString("observaciones"));
             }
+            if (doc.containsKey("origen")) {
+                solicitud.setOrigen(doc.getString("origen"));
+            }
             
             solicitudes.add(solicitud);
         }
@@ -137,6 +144,9 @@ public class SolicitudProcesoMongoDAO {
             }
             if (doc.containsKey("observaciones")) {
                 solicitud.setObservaciones(doc.getString("observaciones"));
+            }
+            if (doc.containsKey("origen")) {
+                solicitud.setOrigen(doc.getString("origen"));
             }
             solicitudes.add(solicitud);
         }
@@ -165,6 +175,9 @@ public class SolicitudProcesoMongoDAO {
             }
             if (doc.containsKey("observaciones")) {
                 solicitud.setObservaciones(doc.getString("observaciones"));
+            }
+            if (doc.containsKey("origen")) {
+                solicitud.setOrigen(doc.getString("origen"));
             }
             
             solicitudes.add(solicitud);

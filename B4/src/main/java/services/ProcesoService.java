@@ -64,6 +64,14 @@ public class ProcesoService {
         return dao.buscarPorId(id);
     }
 
+    public Proceso obtenerPorTipo(String tipo) throws ErrorConexionMongoException {
+        if (tipo == null || tipo.isBlank()) {
+            return null;
+        }
+        ProcesoMongoDAO dao = new ProcesoMongoDAO();
+        return dao.buscarPorTipo(tipo);
+    }
+
     public void inicializarProcesosPorDefecto() {
         try {
             ProcesoMongoDAO dao = new ProcesoMongoDAO();

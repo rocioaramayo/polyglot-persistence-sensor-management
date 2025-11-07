@@ -14,9 +14,11 @@ public class SolicitudProceso {
     private Map<String, Object> parametros; // Cambiado de String a Map para facilitar manejo
     private String resultado; // Resultado del proceso ejecutado
     private String observaciones; // Observaciones adicionales del técnico/proceso
+    private String origen; // MANUAL, AUTOMATICO
 
     public SolicitudProceso() {
         this.parametros = new HashMap<>();
+        this.origen = "MANUAL";
     }
 
     public SolicitudProceso(String usuarioId, String procesoId, Map<String, Object> parametros) {
@@ -25,6 +27,7 @@ public class SolicitudProceso {
         this.parametros = parametros != null ? parametros : new HashMap<>();
         this.estado = "PENDIENTE";
         this.fechaSolicitud = LocalDateTime.now();
+        this.origen = "MANUAL";
     }
 
     // Getters y Setters
@@ -54,4 +57,7 @@ public class SolicitudProceso {
 
     public String getObservaciones() { return observaciones; }
     public void setObservaciones(String observaciones) { this.observaciones = observaciones; }
+
+    public String getOrigen() { return origen; }
+    public void setOrigen(String origen) { this.origen = origen; }
 }

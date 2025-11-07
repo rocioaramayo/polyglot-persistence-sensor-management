@@ -13,6 +13,11 @@ public class Application {
                 } catch (Exception initEx) {
                     System.err.println("Advertencia: no se pudieron precargar los procesos por defecto: " + initEx.getMessage());
                 }
+                try {
+                    services.ProcesosPeriodicosScheduler.getInstance().iniciar();
+                } catch (Exception schedulerEx) {
+                    System.err.println("Advertencia: no se pudieron iniciar los procesos periódicos: " + schedulerEx.getMessage());
+                }
 
                 Class<?> loginCls = Class.forName("ui.LoginFrame");
                 Object loginFrame = loginCls.getDeclaredConstructor().newInstance();
