@@ -3,7 +3,6 @@ package ui.components;
 import exceptions.ErrorConexionCassandraException;
 import services.CqlTerminalService;
 import utils.ConfigLoader;
-import utils.ConfigLoader;
 
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
@@ -24,11 +23,17 @@ public class CassandraTerminalPanel extends JPanel {
     private final JTextField commandField;
     private final JButton ejecutarBtn;
     private final JButton limpiarBtn;
+    private final JButton startBtn;
+    private final JButton pauseBtn;
+    private final JButton finishBtn;
     private final JLabel sessionLabel;
     private final JLabel statusLabel;
     private final javax.swing.Timer sessionTimer;
     private final CqlTerminalService terminalService;
     private final String prompt;
+    private boolean commandRunning;
+    private SessionState sessionState = SessionState.STOPPED;
+    private TerminalSessionListener sessionListener;
 
     private long sessionStartMs = -1L;
     private long accumulatedMs = 0L;
@@ -44,6 +49,9 @@ public class CassandraTerminalPanel extends JPanel {
         commandField = buildCommandField();
         ejecutarBtn = new JButton("Ejecutar");
         limpiarBtn = new JButton("Limpiar");
+        startBtn = new JButton("Iniciar");
+        pauseBtn = new JButton("Pausar");
+        finishBtn = new JButton("Terminar");
         sessionLabel = new JLabel("00:00:00");
         statusLabel = new JLabel("Listo");
         statusLabel.setForeground(new Color(0x22AA22));
@@ -64,8 +72,16 @@ public class CassandraTerminalPanel extends JPanel {
 
         sessionTimer.setRepeats(true);
         sessionTimer.stop();
+        startBtn.addActionListener(e -> handleStart());
+        pauseBtn.addActionListener(e -> handlePauseResume());
+        finishBtn.addActionListener(e -> handleFinish());
 
         escribirBienvenida();
+        refreshExecutionControls();
+    }
+
+    public void setSessionListener(TerminalSessionListener listener) {
+        this.sessionListener = listener;
     }
 
     private JPanel buildInputPanel() {
@@ -81,6 +97,9 @@ public class CassandraTerminalPanel extends JPanel {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         buttons.add(new JLabel("Tiempo sesión:"));
         buttons.add(sessionLabel);
+        buttons.add(startBtn);
+        buttons.add(pauseBtn);
+        buttons.add(finishBtn);
         buttons.add(limpiarBtn);
         buttons.add(ejecutarBtn);
 
@@ -148,6 +167,11 @@ public class CassandraTerminalPanel extends JPanel {
             return;
         }
 
+        if (sessionState != SessionState.RUNNING) {
+            mostrarEstado("Iniciá el servicio antes de ejecutar consultas.", Color.ORANGE);
+            return;
+        }
+
         appendLine(prompt + comando);
 
         if (pareceComandoCqlsh(comando)) {
@@ -164,8 +188,8 @@ public class CassandraTerminalPanel extends JPanel {
             return;
         }
 
-        ejecutarBtn.setEnabled(false);
-        commandField.setEnabled(false);
+        commandRunning = true;
+        refreshExecutionControls();
         statusLabel.setText("Ejecutando...");
         statusLabel.setForeground(new Color(0x2080FF));
 
@@ -177,8 +201,8 @@ public class CassandraTerminalPanel extends JPanel {
 
             @Override
             protected void done() {
-                ejecutarBtn.setEnabled(true);
-                commandField.setEnabled(true);
+                commandRunning = false;
+                refreshExecutionControls();
                 commandField.setText("");
                 commandField.requestFocusInWindow();
                 try {
@@ -251,6 +275,9 @@ public class CassandraTerminalPanel extends JPanel {
     // --- Control de sesión / facturación ---
 
     public void startSessionTracking() {
+        if (sessionState != SessionState.RUNNING) {
+            return;
+        }
         if (sessionStartMs < 0) {
             sessionStartMs = System.currentTimeMillis();
         }
@@ -261,6 +288,9 @@ public class CassandraTerminalPanel extends JPanel {
     }
 
     public void pauseSessionTracking() {
+        if (sessionState != SessionState.RUNNING) {
+            return;
+        }
         if (sessionStartMs >= 0) {
             accumulatedMs += System.currentTimeMillis() - sessionStartMs;
             sessionStartMs = -1L;
@@ -272,10 +302,18 @@ public class CassandraTerminalPanel extends JPanel {
     }
 
     public long stopAndConsumeMillis() {
-        pauseSessionTracking();
+        if (sessionState == SessionState.RUNNING) {
+            pauseSessionTracking();
+        }
         long total = accumulatedMs;
         accumulatedMs = 0L;
+        sessionStartMs = -1L;
+        sessionState = SessionState.STOPPED;
+        if (sessionTimer.isRunning()) {
+            sessionTimer.stop();
+        }
         updateSessionLabel();
+        refreshExecutionControls();
         return total;
     }
 
@@ -320,5 +358,70 @@ public class CassandraTerminalPanel extends JPanel {
             return "cqlsh> ";
         }
         return "cqlsh:" + keyspace + "> ";
+    }
+
+    private void handleStart() {
+        if (commandRunning || sessionState == SessionState.RUNNING) {
+            return;
+        }
+        accumulatedMs = 0L;
+        sessionStartMs = System.currentTimeMillis();
+        sessionState = SessionState.RUNNING;
+        if (!sessionTimer.isRunning()) {
+            sessionTimer.start();
+        }
+        updateSessionLabel();
+        mostrarEstado("Sesión iniciada", new Color(0x22AA22));
+        refreshExecutionControls();
+        commandField.requestFocusInWindow();
+    }
+
+    private void handlePauseResume() {
+        if (sessionState == SessionState.RUNNING) {
+            pauseSessionTracking();
+            sessionState = SessionState.PAUSED;
+            mostrarEstado("Sesión pausada", new Color(0xCC8800));
+        } else if (sessionState == SessionState.PAUSED) {
+            sessionState = SessionState.RUNNING;
+            sessionStartMs = System.currentTimeMillis();
+            if (!sessionTimer.isRunning()) {
+                sessionTimer.start();
+            }
+            mostrarEstado("Sesión reanudada", new Color(0x22AA22));
+        }
+        refreshExecutionControls();
+        if (sessionState == SessionState.RUNNING) {
+            commandField.requestFocusInWindow();
+        }
+    }
+
+    private void handleFinish() {
+        if (commandRunning) {
+            mostrarEstado("Esperá a que termine la ejecución actual", Color.ORANGE);
+            return;
+        }
+        if (sessionState == SessionState.STOPPED && accumulatedMs == 0L) {
+            mostrarEstado("No hay sesión activa para finalizar.", new Color(0xCC8800));
+            return;
+        }
+        long millis = stopAndConsumeMillis();
+        mostrarEstado("Sesión finalizada", new Color(0x22AA22));
+        if (sessionListener != null && millis > 0) {
+            sessionListener.onSessionFinished(millis);
+        }
+    }
+
+    private void refreshExecutionControls() {
+        boolean canExecute = sessionState == SessionState.RUNNING && !commandRunning;
+        commandField.setEnabled(canExecute);
+        ejecutarBtn.setEnabled(canExecute);
+        startBtn.setEnabled(sessionState == SessionState.STOPPED && !commandRunning);
+        pauseBtn.setEnabled(sessionState != SessionState.STOPPED);
+        pauseBtn.setText(sessionState == SessionState.PAUSED ? "Reanudar" : "Pausar");
+        finishBtn.setEnabled(sessionState != SessionState.STOPPED && !commandRunning);
+    }
+
+    private enum SessionState {
+        STOPPED, RUNNING, PAUSED
     }
 }

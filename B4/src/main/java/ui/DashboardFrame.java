@@ -69,7 +69,6 @@ public class DashboardFrame extends JFrame {
     private JTable movimientosTable;
     private CassandraTerminalPanel terminalPanel;
     private final TerminalUsageService terminalUsageService = TerminalUsageService.getInstance();
-    private boolean terminalUsoFacturado;
 
     public DashboardFrame(String token) {
         this.token = token;
@@ -100,6 +99,7 @@ public class DashboardFrame extends JFrame {
         tabbedPane.addTab("Mensajería", crearPanelMensajeria());
         tabbedPane.addTab("Cuenta", crearPanelCuenta());
         terminalPanel = new CassandraTerminalPanel();
+        terminalPanel.setSessionListener(this::facturarSesionTerminal);
         tabbedPane.addTab("Servicios", terminalPanel);
         tabbedPane.addChangeListener(e -> {
             if (terminalPanel == null) {
@@ -125,7 +125,7 @@ public class DashboardFrame extends JFrame {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                facturarUsoTerminalSiCorresponde();
+                facturarUsoTerminalPendiente();
             }
         });
     }
@@ -1448,7 +1448,7 @@ public class DashboardFrame extends JFrame {
     }
 
     private void handleLogout(java.awt.event.ActionEvent e) {
-        facturarUsoTerminalSiCorresponde();
+        facturarUsoTerminalPendiente();
         try {
             AuthService.getInstance().logout(token);
         } catch (ErrorConexionRedisException ex) {
@@ -1533,25 +1533,25 @@ public class DashboardFrame extends JFrame {
         return panel;
     }
 
-    private void facturarUsoTerminalSiCorresponde() {
-        if (terminalUsoFacturado || terminalPanel == null || usuarioActual == null) {
-            return;
-        }
-        terminalPanel.pauseSessionTracking();
-        long millis = terminalPanel.peekAccumulatedMillis();
-        if (millis <= 0) {
-            terminalUsoFacturado = true;
+    private void facturarSesionTerminal(long millis) {
+        if (millis <= 0 || usuarioActual == null) {
             return;
         }
         try {
             terminalUsageService.registrarUso(usuarioActual.getId(), millis);
-            terminalPanel.stopAndConsumeMillis();
-            terminalUsoFacturado = true;
         } catch (ErrorConexionMySQLException ex) {
             JOptionPane.showMessageDialog(this,
                     "No se pudo facturar el uso del terminal: " + ex.getMessage(),
                     "Aviso",
                     JOptionPane.WARNING_MESSAGE);
         }
+    }
+
+    private void facturarUsoTerminalPendiente() {
+        if (terminalPanel == null) {
+            return;
+        }
+        long millis = terminalPanel.stopAndConsumeMillis();
+        facturarSesionTerminal(millis);
     }
 }

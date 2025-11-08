@@ -8,6 +8,8 @@ import repository.CuentaMySQLRepository;
 import repository.MovimientoMySQLRepository;
 import exceptions.ErrorConexionMySQLException;
 
+import java.util.UUID;
+
 public class FacturaService {
     private static FacturaService instance;
 
@@ -23,6 +25,9 @@ public class FacturaService {
     public void crearFactura(String usuarioId, Double monto, String descripcion) 
             throws ErrorConexionMySQLException {
         Factura factura = new Factura(usuarioId, monto, descripcion);
+        if (factura.getSolicitudId() == null || factura.getSolicitudId().isBlank()) {
+            factura.setSolicitudId(UUID.randomUUID().toString());
+        }
         FacturaMySQLRepository.getInstance().crear(factura);
 
         // Registrar cargo en cuenta corriente
