@@ -5,14 +5,25 @@ import modelo.Alerta;
 import modelo.Usuario;
 import repository.AlertaMongoDAO;
 import repository.UsuarioMongoDAO;
+import ui.components.CassandraTerminalPanel;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.AWTEventListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class AdminFrame extends JFrame {
     private final String token;
+    private static final long INACTIVITY_LIMIT_MS = TimeUnit.MINUTES.toMillis(15);
+    private javax.swing.Timer inactivityTimer;
+    private long lastInteractionMs;
+    private AWTEventListener globalActivityListener;
+    private boolean logoutTriggered;
+    private CassandraTerminalPanel serviciosPanel;
 
     public AdminFrame(String token) {
         this.token = token;
@@ -20,16 +31,42 @@ public class AdminFrame extends JFrame {
         setSize(900, 600);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                detenerMonitoreos();
+            }
+        });
+        lastInteractionMs = System.currentTimeMillis();
+
+        inactivityTimer = new javax.swing.Timer(30_000, e -> verificarInactividad());
+        inactivityTimer.start();
+
+        globalActivityListener = event -> updateLastInteraction();
+        Toolkit.getDefaultToolkit().addAWTEventListener(
+                globalActivityListener,
+                AWTEvent.MOUSE_EVENT_MASK | AWTEvent.MOUSE_MOTION_EVENT_MASK | AWTEvent.KEY_EVENT_MASK
+        );
 
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Sensores", crearPanelSensores());
         tabs.addTab("Técnicos", crearPanelTecnicos());
         tabs.addTab("Alertas", crearPanelAlertas());
+        serviciosPanel = new CassandraTerminalPanel();
+        tabs.addTab("Servicios", serviciosPanel);
+        tabs.addChangeListener(e -> {
+            updateLastInteraction();
+            if (tabs.getSelectedComponent() == serviciosPanel) {
+                serviciosPanel.startSessionTracking();
+            } else {
+                serviciosPanel.pauseSessionTracking();
+            }
+        });
 
         JPanel header = new JPanel(new BorderLayout());
         JButton cerrarBtn = new JButton("Cerrar");
         cerrarBtn.addActionListener(e -> {
-            // Volver al login
+            detenerMonitoreos();
             new LoginFrame().setVisible(true);
             dispose();
         });
@@ -395,6 +432,40 @@ public class AdminFrame extends JFrame {
             }
         } catch (ErrorConexionMongoException e) {
             JOptionPane.showMessageDialog(this, "No se pudieron cargar alertas: "+e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void updateLastInteraction() {
+        lastInteractionMs = System.currentTimeMillis();
+    }
+
+    private void verificarInactividad() {
+        if (!logoutTriggered && System.currentTimeMillis() - lastInteractionMs >= INACTIVITY_LIMIT_MS) {
+            cerrarSesionPorInactividad();
+        }
+    }
+
+    private void cerrarSesionPorInactividad() {
+        if (logoutTriggered) {
+            return;
+        }
+        logoutTriggered = true;
+        detenerMonitoreos();
+        JOptionPane.showMessageDialog(this, "Sesión cerrada por inactividad (15 minutos).", "Sesión finalizada", JOptionPane.WARNING_MESSAGE);
+        new LoginFrame().setVisible(true);
+        dispose();
+    }
+
+    private void detenerMonitoreos() {
+        if (serviciosPanel != null) {
+            serviciosPanel.pauseSessionTracking();
+        }
+        if (inactivityTimer != null) {
+            inactivityTimer.stop();
+        }
+        if (globalActivityListener != null) {
+            Toolkit.getDefaultToolkit().removeAWTEventListener(globalActivityListener);
+            globalActivityListener = null;
         }
     }
 }

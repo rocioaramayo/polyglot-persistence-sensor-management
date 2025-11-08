@@ -6,7 +6,11 @@ import javax.swing.table.TableCellRenderer;
 import services.*;
 import modelo.*;
 import exceptions.*;
+import ui.components.CassandraTerminalPanel;
+
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.sql.SQLException;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -63,6 +67,9 @@ public class DashboardFrame extends JFrame {
     private JTable facturasTable;
     private DefaultTableModel movimientosModel;
     private JTable movimientosTable;
+    private CassandraTerminalPanel terminalPanel;
+    private final TerminalUsageService terminalUsageService = TerminalUsageService.getInstance();
+    private boolean terminalUsoFacturado;
 
     public DashboardFrame(String token) {
         this.token = token;
@@ -86,13 +93,24 @@ public class DashboardFrame extends JFrame {
         cargarUbicacionesSensores();
 
         tabbedPane = new JTabbedPane();
-        // La gestión de sensores se realiza solo en AdminFrame
         tabbedPane.addTab("Procesos", crearPanelProcesos());
         tabbedPane.addTab("Solicitudes", crearPanelSolicitudes());
         tabbedPane.addTab("Informes", crearPanelInformes());
         tabbedPane.addTab("Alertas", crearPanelAlertas());
         tabbedPane.addTab("Mensajería", crearPanelMensajeria());
         tabbedPane.addTab("Cuenta", crearPanelCuenta());
+        terminalPanel = new CassandraTerminalPanel();
+        tabbedPane.addTab("Servicios", terminalPanel);
+        tabbedPane.addChangeListener(e -> {
+            if (terminalPanel == null) {
+                return;
+            }
+            if (tabbedPane.getSelectedComponent() == terminalPanel) {
+                terminalPanel.startSessionTracking();
+            } else {
+                terminalPanel.pauseSessionTracking();
+            }
+        });
 
         if (usuarioActual.getRol() != null && usuarioActual.getRol().equalsIgnoreCase("ADMINISTRADOR")) {
             tabbedPane.addTab("Admin", crearPanelAdmin());
@@ -103,6 +121,13 @@ public class DashboardFrame extends JFrame {
         container.add(header, BorderLayout.NORTH);
         container.add(tabbedPane, BorderLayout.CENTER);
         add(container);
+
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                facturarUsoTerminalSiCorresponde();
+            }
+        });
     }
 
     private void cargarProcesosDisponibles() {
@@ -1423,6 +1448,7 @@ public class DashboardFrame extends JFrame {
     }
 
     private void handleLogout(java.awt.event.ActionEvent e) {
+        facturarUsoTerminalSiCorresponde();
         try {
             AuthService.getInstance().logout(token);
         } catch (ErrorConexionRedisException ex) {
@@ -1505,5 +1531,27 @@ public class DashboardFrame extends JFrame {
 
         panel.add(altaPanel, BorderLayout.CENTER);
         return panel;
+    }
+
+    private void facturarUsoTerminalSiCorresponde() {
+        if (terminalUsoFacturado || terminalPanel == null || usuarioActual == null) {
+            return;
+        }
+        terminalPanel.pauseSessionTracking();
+        long millis = terminalPanel.peekAccumulatedMillis();
+        if (millis <= 0) {
+            terminalUsoFacturado = true;
+            return;
+        }
+        try {
+            terminalUsageService.registrarUso(usuarioActual.getId(), millis);
+            terminalPanel.stopAndConsumeMillis();
+            terminalUsoFacturado = true;
+        } catch (ErrorConexionMySQLException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo facturar el uso del terminal: " + ex.getMessage(),
+                    "Aviso",
+                    JOptionPane.WARNING_MESSAGE);
+        }
     }
 }
