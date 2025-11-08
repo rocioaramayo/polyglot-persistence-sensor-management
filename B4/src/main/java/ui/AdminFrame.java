@@ -5,7 +5,6 @@ import modelo.Alerta;
 import modelo.Usuario;
 import repository.AlertaMongoDAO;
 import repository.UsuarioMongoDAO;
-import ui.components.CassandraTerminalPanel;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -23,7 +22,6 @@ public class AdminFrame extends JFrame {
     private long lastInteractionMs;
     private AWTEventListener globalActivityListener;
     private boolean logoutTriggered;
-    private CassandraTerminalPanel serviciosPanel;
 
     public AdminFrame(String token) {
         this.token = token;
@@ -52,16 +50,6 @@ public class AdminFrame extends JFrame {
         tabs.addTab("Sensores", crearPanelSensores());
         tabs.addTab("Técnicos", crearPanelTecnicos());
         tabs.addTab("Alertas", crearPanelAlertas());
-        serviciosPanel = new CassandraTerminalPanel();
-        tabs.addTab("Servicios", serviciosPanel);
-        tabs.addChangeListener(e -> {
-            updateLastInteraction();
-            if (tabs.getSelectedComponent() == serviciosPanel) {
-                serviciosPanel.startSessionTracking();
-            } else {
-                serviciosPanel.pauseSessionTracking();
-            }
-        });
 
         JPanel header = new JPanel(new BorderLayout());
         JButton cerrarBtn = new JButton("Cerrar");
@@ -457,9 +445,6 @@ public class AdminFrame extends JFrame {
     }
 
     private void detenerMonitoreos() {
-        if (serviciosPanel != null) {
-            serviciosPanel.pauseSessionTracking();
-        }
         if (inactivityTimer != null) {
             inactivityTimer.stop();
         }

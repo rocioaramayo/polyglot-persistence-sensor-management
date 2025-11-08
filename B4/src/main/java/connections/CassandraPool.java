@@ -1,6 +1,7 @@
 package connections;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import exceptions.ErrorConexionCassandraException;
 import utils.ConfigLoader;
 import java.net.InetSocketAddress;
@@ -15,12 +16,26 @@ public class CassandraPool {
             String host = config.getProperty("cassandra.host", "127.0.0.1");
             int port = Integer.parseInt(config.getProperty("cassandra.port", "9042"));
             String keyspace = config.getProperty("cassandra.keyspace", "sensor_keyspace");
+            String username = config.getProperty("cassandra.username", "").trim();
+            String password = config.getProperty("cassandra.password", "").trim();
 
-            this.session = CqlSession.builder()
+            CqlSessionBuilder builder = CqlSession.builder()
                     .addContactPoint(new InetSocketAddress(host, port))
-                    .withLocalDatacenter(config.getProperty("cassandra.datacenter", "datacenter1"))
-                    .withKeyspace(keyspace)
-                    .build();
+                    .withLocalDatacenter(config.getProperty("cassandra.datacenter", "datacenter1"));
+
+            if (!keyspace.isBlank()) {
+                builder = builder.withKeyspace(keyspace);
+            }
+            if (!username.isEmpty()) {
+                builder = builder.withAuthCredentials(username, password);
+            }
+
+            this.session = builder.build();
+            System.out.printf("Cassandra conectado (%s:%d) keyspace=%s usuario=%s%n",
+                    host,
+                    port,
+                    keyspace,
+                    username.isEmpty() ? "(sin credenciales)" : username);
         } catch (Exception e) {
             throw new ErrorConexionCassandraException("Error al conectar a Cassandra", e);
         }

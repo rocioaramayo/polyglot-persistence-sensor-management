@@ -483,12 +483,15 @@ public class DashboardFrame extends JFrame {
             for (Usuario u : usuarios) {
                 String label = (u.getNombreCompleto() != null && !u.getNombreCompleto().isBlank()) ? u.getNombreCompleto() : u.getEmail();
                 if (label == null || label.isBlank()) label = "Usuario " + u.getId();
-                if (usuarioActual != null && u.getId() != null && u.getId().equals(usuarioActual.getId())) {
+                boolean esActual = usuarioActual != null && u.getId() != null && u.getId().equals(usuarioActual.getId());
+                if (esActual) {
                     label = "Yo - " + label;
                     selfIndex = idx;
                 }
-                miembrosModel.addElement(new DestinatarioItem(u.getId(), label));
-                idx++;
+                if (esActual || esUsuarioFinal(u)) {
+                    miembrosModel.addElement(new DestinatarioItem(u.getId(), label));
+                    idx++;
+                }
             }
             if (selfIndex == -1 && usuarioActual != null) {
                 String base = (usuarioActual.getNombreCompleto() != null && !usuarioActual.getNombreCompleto().isBlank()) ? usuarioActual.getNombreCompleto() : usuarioActual.getEmail();
@@ -537,7 +540,8 @@ public class DashboardFrame extends JFrame {
                     label = "Usuario " + u.getId();
                 }
                 usuariosCache.put(u.getId(), label);
-                if (!u.getId().equals(usuarioActual.getId())) {
+                boolean esActual = usuarioActual != null && u.getId() != null && u.getId().equals(usuarioActual.getId());
+                if (!esActual && esUsuarioFinal(u)) {
                     usuariosModel.addElement(new DestinatarioItem(u.getId(), label));
                 }
             }
@@ -659,6 +663,17 @@ public class DashboardFrame extends JFrame {
                 ? " - " + grupo.getDescripcion()
                 : "";
         return nombre + " (" + cantidad + " miembros)" + descripcion;
+    }
+
+    private boolean esUsuarioFinal(Usuario usuario) {
+        if (usuario == null) {
+            return false;
+        }
+        String rol = usuario.getRol();
+        if (rol == null || rol.isBlank()) {
+            return true;
+        }
+        return "USUARIO".equalsIgnoreCase(rol.trim());
     }
 
    
