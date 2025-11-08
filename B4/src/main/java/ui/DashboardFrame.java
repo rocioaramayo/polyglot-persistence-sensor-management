@@ -1429,7 +1429,9 @@ public class DashboardFrame extends JFrame {
                     textArea.setText("No hay alertas");
                 } else {
                     for (modelo.Alerta a : alertas) {
-                        textArea.append("[" + a.getSeveridad() + "] " + a.getTipo() + " - " + a.getDescripcion() + " (" + a.getFecha() + ")\n\n");
+                        String tipo = a.getTipo() != null ? a.getTipo() : "";
+                        String prefijo = tipo.toUpperCase().contains("AUTO") ? "[AUTO] " : "";
+                        textArea.append(prefijo + "[" + a.getSeveridad() + "] " + tipo + " - " + a.getDescripcion() + " (" + a.getFecha() + ")\n\n");
                     }
                 }
             } catch (Exception ex) {

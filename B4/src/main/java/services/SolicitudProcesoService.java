@@ -180,8 +180,6 @@ public class SolicitudProcesoService {
         // Crear alerta y mensaje para notificar al usuario que su informe estÃƒÂ¡ listo
         try {
             Alerta alerta = new Alerta("PROCESO_COMPLETADO", "Su informe para la solicitud " + solicitudId + " estÃƒÂ¡ listo.", "MEDIA");
-            // usuarioId en Solicitud es String (Mongo id), preferimos notificar con ese id
-            alerta.setUsuarioId(s.getUsuarioId());
             AlertaMongoDAO alertaDao = new AlertaMongoDAO();
             alertaDao.insertar(alerta);
 

@@ -32,10 +32,7 @@ public class AlertaMongoDAO {
         if (alerta.getSensorId() != null) {
             doc.append("sensor_id", alerta.getSensorId());
         }
-        if (alerta.getUsuarioId() != null) {
-            doc.append("usuario_id", alerta.getUsuarioId());
-        }
-        
+        doc.append("usuario_id", "GLOBAL");
         collection.insertOne(doc);
         return doc.getObjectId("_id").toString();
     }
@@ -57,16 +54,7 @@ public class AlertaMongoDAO {
     }
 
     public List<Alerta> listarPorUsuario(String usuarioId) {
-        List<Alerta> alertas = new ArrayList<>();
-        for (Document doc : collection.find(Filters.eq("usuario_id", usuarioId))) {
-            Alerta alerta = new Alerta();
-            alerta.setId(doc.getObjectId("_id").toString());
-            alerta.setTipo(doc.getString("tipo"));
-            alerta.setDescripcion(doc.getString("descripcion"));
-            alerta.setEstado(doc.getString("estado"));
-            alertas.add(alerta);
-        }
-        return alertas;
+        return listarActivas();
     }
 
     public void resolver(String id, String resueltoPor) {

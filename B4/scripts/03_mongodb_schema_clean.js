@@ -1,4 +1,4 @@
-// MongoDB schema (mongosh) for polyglot_mongodb
+// MongoDB schema (mongosh) admin@polyglot.comfor polyglot_mongodb
 // Usage: in mongosh run: use polyglot_mongodb; then load this file or paste it.
 
 // Helper: create collection only if missing
@@ -41,7 +41,7 @@ db.usuarios.updateOne(
     $setOnInsert: {
       nombre: "Administrador",
       apellido: "Del Sistema",
-      email: "admin@polyglot.com",
+      email: "",
       password: "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
       rol: "ADMINISTRADOR",
       fecha_registro: new Date(),
@@ -172,9 +172,8 @@ ensureCollection("alertas", {
       required: ["tipo", "fecha", "descripcion", "estado"],
       properties: {
         _id: { bsonType: "objectId" },
-        tipo: { bsonType: "string", enum: ["SENSOR", "CLIMATICA", "SISTEMA"] },
+        tipo: { bsonType: "string", enum: ["SENSOR", "CLIMATICA", "CLIMATICA_AUTO", "SISTEMA", "PROCESO_COMPLETADO"] },
         sensor_id: { bsonType: "string" },
-        usuario_id: { bsonType: "string" },
         fecha: { bsonType: "date" },
         descripcion: { bsonType: "string" },
         severidad: { bsonType: "string", enum: ["BAJA", "MEDIA", "ALTA", "CRITICA"] },
@@ -185,8 +184,40 @@ ensureCollection("alertas", {
     }
   }
 });
-db.alertas.createIndex({ usuario_id: 1, estado: 1 });
 db.alertas.createIndex({ fecha: -1 });
+db.alertas.createIndex({ tipo: 1, fecha: -1 });
+
+// ========== REGLAS DE ALERTA ==========
+ensureCollection("alert_rules", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["nombre", "activo"],
+      properties: {
+        _id: { bsonType: "objectId" },
+        nombre: { bsonType: "string" },
+        descripcion: { bsonType: "string" },
+        ciudad: { bsonType: "string" },
+        zona: { bsonType: "string" },
+        pais: { bsonType: "string" },
+        severidad: { bsonType: "string", enum: ["BAJA", "MEDIA", "ALTA", "CRITICA"] },
+        temperatura_min: { bsonType: "double" },
+        temperatura_max: { bsonType: "double" },
+        humedad_min: { bsonType: "double" },
+        humedad_max: { bsonType: "double" },
+        fecha_desde: { bsonType: "date" },
+        fecha_hasta: { bsonType: "date" },
+        ventana_minutos: { bsonType: "int" },
+        activo: { bsonType: "bool" },
+        fecha_creacion: { bsonType: "date" },
+        ultima_evaluacion: { bsonType: "date" },
+        ultima_alerta: { bsonType: "date" }
+      }
+    }
+  }
+});
+db.alert_rules.createIndex({ activo: 1 });
+db.alert_rules.createIndex({ ciudad: 1, pais: 1 });
 
 // ========== CONTROL DE SENSORES ==========
 ensureCollection("control_sensores", {
@@ -209,4 +240,3 @@ ensureCollection("control_sensores", {
 });
 
 print("Mongo schema ready: colecciones creadas y administracion/roles/usuarios iniciales cargados.");
-

@@ -18,6 +18,11 @@ public class Application {
                 } catch (Exception schedulerEx) {
                     System.err.println("Advertencia: no se pudieron iniciar los procesos periódicos: " + schedulerEx.getMessage());
                 }
+                try {
+                    services.AutomaticAlertScheduler.getInstance().iniciar();
+                } catch (Exception autoAlertEx) {
+                    System.err.println("Advertencia: no se pudo iniciar el scheduler de alertas automáticas: " + autoAlertEx.getMessage());
+                }
 
                 Class<?> loginCls = Class.forName("ui.LoginFrame");
                 Object loginFrame = loginCls.getDeclaredConstructor().newInstance();

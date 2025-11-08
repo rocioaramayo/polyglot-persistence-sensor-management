@@ -6,7 +6,6 @@ public class Alerta {
     private String id; // ObjectId de MongoDB
     private String tipo; // SENSOR, CLIMATICA, SISTEMA
     private String sensorId; // ID del sensor (si aplica)
-    private String usuarioId; // ID del usuario destinatario (si aplica)
     private LocalDateTime fecha;
     private String descripcion;
     private String severidad; // BAJA, MEDIA, ALTA, CRITICA
@@ -33,9 +32,6 @@ public class Alerta {
 
     public String getSensorId() { return sensorId; }
     public void setSensorId(String sensorId) { this.sensorId = sensorId; }
-
-    public String getUsuarioId() { return usuarioId; }
-    public void setUsuarioId(String usuarioId) { this.usuarioId = usuarioId; }
 
     public LocalDateTime getFecha() { return fecha; }
     public void setFecha(LocalDateTime fecha) { this.fecha = fecha; }
