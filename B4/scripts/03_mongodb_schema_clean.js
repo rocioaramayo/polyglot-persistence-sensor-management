@@ -239,4 +239,46 @@ ensureCollection("control_sensores", {
   }
 });
 
+// ========== MANTENIMIENTO (tareas y configuración) ==========
+ensureCollection("mantenimiento_tasks", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["sensor_id", "tipo", "estado"],
+      properties: {
+        _id: { bsonType: "objectId" },
+        sensor_id: { bsonType: "string" },
+        sensor_nombre: { bsonType: ["string","null"] },
+        tipo: { bsonType: "string", enum: ["REVISION_PROGRAMADA", "REPARACION_FALLA", "REVISION_MANUAL"] },
+        estado: { bsonType: "string", enum: ["PENDIENTE", "EN_PROGRESO", "COMPLETADA"] },
+        fecha_programada: { bsonType: ["date","null"] },
+        fecha_creacion: { bsonType: ["date","null"] },
+        fecha_completada: { bsonType: ["date", "null"] },
+        tecnico_id: { bsonType: ["string", "null"] },
+        tecnico_nombre: { bsonType: ["string", "null"] },
+        motivo: { bsonType: ["string","null"] },
+        observaciones: { bsonType: ["string","null"] }
+      }
+    }
+  }
+});
+db.mantenimiento_tasks.createIndex({ sensor_id: 1, estado: 1 });
+db.mantenimiento_tasks.createIndex({ tipo: 1, estado: 1 });
+
+ensureCollection("mantenimiento_config", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["sensor_id"],
+      properties: {
+        _id: { bsonType: "objectId" },
+        sensor_id: { bsonType: "string" },
+        frecuencia_dias: { bsonType: "int" },
+        ultima_revision: { bsonType: "date" }
+      }
+    }
+  }
+});
+db.mantenimiento_config.createIndex({ sensor_id: 1 }, { unique: true });
+
 print("Mongo schema ready: colecciones creadas y administracion/roles/usuarios iniciales cargados.");

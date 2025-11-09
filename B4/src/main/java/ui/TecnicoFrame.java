@@ -4,14 +4,14 @@ import exceptions.ErrorConexionCassandraException;
 import exceptions.ErrorConexionMongoException;
 import exceptions.ErrorConexionMySQLException;
 import exceptions.ErrorConexionRedisException;
+import modelo.MantenimientoTask;
 import modelo.Proceso;
-import modelo.Sensor;
 import modelo.SolicitudProceso;
 import modelo.Usuario;
 import repository.ProcesoMongoDAO;
 import services.AuthService;
 import services.ConsultasPeriodicasService;
-import services.SensorService;
+import services.MantenimientoTaskService;
 import services.SolicitudProcesoService;
 import services.UsuarioService;
 
@@ -42,11 +42,10 @@ public class TecnicoFrame extends JFrame {
     private DefaultTableModel asignadasModel;
     private JTable asignadasTable;
 
-    private DefaultTableModel sensoresModel;
-    private JTable sensoresTable;
-    private JComboBox<String> filtroEstadoSensores;
-    private JTextField filtroTextoSensores;
-    private final List<Sensor> sensoresCache = new ArrayList<>();
+    private DefaultTableModel tareasDisponiblesModel;
+    private JTable tareasDisponiblesTable;
+    private DefaultTableModel misTareasModel;
+    private JTable misTareasTable;
 
     public TecnicoFrame(String token) {
         this.token = token;
@@ -67,7 +66,8 @@ public class TecnicoFrame extends JFrame {
 
         refrescarPendientes();
         refrescarAsignadas();
-        refrescarSensores();
+        refrescarTareasDisponibles();
+        refrescarMisTareas();
     }
 
     private boolean cargarUsuarioActual() {
@@ -217,70 +217,59 @@ public class TecnicoFrame extends JFrame {
         JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        sensoresModel = new DefaultTableModel(new Object[]{"ID", "Nombre", "Tipo", "Ciudad", "País", "Estado"}, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
+                construirPanelTareasDisponibles(), construirPanelMisTareas());
+        split.setResizeWeight(0.5);
+        split.setBorder(null);
+
+        panel.add(split, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel construirPanelTareasDisponibles() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(BorderFactory.createTitledBorder("Tareas disponibles"));
+
+        tareasDisponiblesModel = new DefaultTableModel(new Object[]{"ID","Sensor","Tipo","Fecha","Motivo"},0){
+            @Override public boolean isCellEditable(int r,int c){return false;}
         };
-        sensoresTable = new JTable(sensoresModel);
-        sensoresTable.setFillsViewportHeight(true);
-        sensoresTable.setAutoCreateRowSorter(true);
-        sensoresTable.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                String estado = (String) table.getValueAt(row, 5);
-                if ("INACTIVO".equalsIgnoreCase(estado) && !isSelected) {
-                    c.setForeground(new Color(180, 0, 0));
-                } else {
-                    c.setForeground(isSelected ? table.getSelectionForeground() : table.getForeground());
-                }
-                return c;
-            }
-        });
-
-        panel.add(new JScrollPane(sensoresTable), BorderLayout.CENTER);
-
-        JPanel filtros = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        filtros.add(new JLabel("Estado:"));
-        filtroEstadoSensores = new JComboBox<>(new String[]{"Todos", "Activos", "Inactivos"});
-        filtroEstadoSensores.addActionListener(e -> aplicarFiltrosSensores());
-        filtros.add(filtroEstadoSensores);
-
-        filtros.add(new JLabel("Buscar (nombre/ciudad):"));
-        filtroTextoSensores = new JTextField(18);
-        filtroTextoSensores.addActionListener(e -> aplicarFiltrosSensores());
-        filtros.add(filtroTextoSensores);
-
-        JButton aplicarFiltroBtn = new JButton("Aplicar filtro");
-        aplicarFiltroBtn.addActionListener(e -> aplicarFiltrosSensores());
-        filtros.add(aplicarFiltroBtn);
-
-        JButton limpiarFiltroBtn = new JButton("Limpiar");
-        limpiarFiltroBtn.addActionListener(e -> {
-            filtroEstadoSensores.setSelectedIndex(0);
-            filtroTextoSensores.setText("");
-            aplicarFiltrosSensores();
-        });
-        filtros.add(limpiarFiltroBtn);
-
-        panel.add(filtros, BorderLayout.NORTH);
+        tareasDisponiblesTable = new JTable(tareasDisponiblesModel);
+        tareasDisponiblesTable.setFillsViewportHeight(true);
+        tareasDisponiblesTable.setAutoCreateRowSorter(true);
+        panel.add(new JScrollPane(tareasDisponiblesTable), BorderLayout.CENTER);
 
         JButton refrescarBtn = new JButton("Refrescar");
-        refrescarBtn.addActionListener(e -> refrescarSensores());
-
-        JButton repararBtn = new JButton("Marcar operativo");
-        repararBtn.addActionListener(e -> actualizarEstadoSensor("ACTIVO"));
-
-        JButton deshabilitarBtn = new JButton("Marcar inactivo");
-        deshabilitarBtn.addActionListener(e -> actualizarEstadoSensor("INACTIVO"));
+        refrescarBtn.addActionListener(e -> refrescarTareasDisponibles());
+        JButton tomarBtn = new JButton("Tomar tarea");
+        tomarBtn.addActionListener(e -> tomarTareaSeleccionada());
 
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         acciones.add(refrescarBtn);
-        acciones.add(repararBtn);
-        acciones.add(deshabilitarBtn);
+        acciones.add(tomarBtn);
+        panel.add(acciones, BorderLayout.SOUTH);
+        return panel;
+    }
 
+    private JPanel construirPanelMisTareas() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(BorderFactory.createTitledBorder("Mis tareas"));
+
+        misTareasModel = new DefaultTableModel(new Object[]{"ID","Sensor","Tipo","Estado","Fecha","Motivo"},0){
+            @Override public boolean isCellEditable(int r,int c){return false;}
+        };
+        misTareasTable = new JTable(misTareasModel);
+        misTareasTable.setFillsViewportHeight(true);
+        misTareasTable.setAutoCreateRowSorter(true);
+        panel.add(new JScrollPane(misTareasTable), BorderLayout.CENTER);
+
+        JButton refrescarBtn = new JButton("Refrescar");
+        refrescarBtn.addActionListener(e -> refrescarMisTareas());
+        JButton completarBtn = new JButton("Completar tarea");
+        completarBtn.addActionListener(e -> completarTareaSeleccionada());
+
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        acciones.add(refrescarBtn);
+        acciones.add(completarBtn);
         panel.add(acciones, BorderLayout.SOUTH);
         return panel;
     }
@@ -339,48 +328,85 @@ public class TecnicoFrame extends JFrame {
         }
     }
 
-    private void refrescarSensores() {
+    private void refrescarTareasDisponibles() {
         try {
-            List<Sensor> sensores = SensorService.getInstance().listarTodos();
-            sensoresCache.clear();
-            sensoresCache.addAll(sensores);
-            aplicarFiltrosSensores();
-        } catch (ErrorConexionCassandraException e) {
-            JOptionPane.showMessageDialog(this, "No se pudieron cargar los sensores: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            List<MantenimientoTask> tareas = MantenimientoTaskService.getInstance().listarDisponibles();
+            tareasDisponiblesModel.setRowCount(0);
+            for (MantenimientoTask t : tareas) {
+                tareasDisponiblesModel.addRow(new Object[]{
+                        t.getId(),
+                        t.getSensorNombre(),
+                        t.getTipo(),
+                        t.getFechaProgramada() != null ? FECHA_FORMATO.format(t.getFechaProgramada()) : "-",
+                        t.getMotivo()
+                });
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "No se pudieron cargar las tareas disponibles: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private void aplicarFiltrosSensores() {
-        if (sensoresModel == null) {
-            return;
-        }
-        String estadoFiltro = filtroEstadoSensores != null ? (String) filtroEstadoSensores.getSelectedItem() : "Todos";
-        String texto = filtroTextoSensores != null ? filtroTextoSensores.getText().trim().toLowerCase() : "";
-
-        sensoresModel.setRowCount(0);
-        for (Sensor s : sensoresCache) {
-            String estado = s.getEstado() != null ? s.getEstado().toUpperCase() : "-";
-            boolean coincideEstado = true;
-            if ("Activos".equalsIgnoreCase(estadoFiltro)) {
-                coincideEstado = "ACTIVO".equalsIgnoreCase(estado);
-            } else if ("Inactivos".equalsIgnoreCase(estadoFiltro)) {
-                coincideEstado = "INACTIVO".equalsIgnoreCase(estado);
-            }
-
-            boolean coincideTexto = texto.isEmpty()
-                    || (s.getNombre() != null && s.getNombre().toLowerCase().contains(texto))
-                    || (s.getCiudad() != null && s.getCiudad().toLowerCase().contains(texto));
-
-            if (coincideEstado && coincideTexto) {
-                sensoresModel.addRow(new Object[]{
-                        s.getId(),
-                        s.getNombre(),
-                        s.getTipo(),
-                        s.getCiudad(),
-                        s.getPais(),
-                        estado
+    private void refrescarMisTareas() {
+        try {
+            List<MantenimientoTask> tareas = MantenimientoTaskService.getInstance().listarPorTecnico(usuarioActual.getId());
+            misTareasModel.setRowCount(0);
+            for (MantenimientoTask t : tareas) {
+                misTareasModel.addRow(new Object[]{
+                        t.getId(),
+                        t.getSensorNombre(),
+                        t.getTipo(),
+                        t.getEstado(),
+                        t.getFechaProgramada() != null ? FECHA_FORMATO.format(t.getFechaProgramada()) : "-",
+                        t.getMotivo()
                 });
             }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "No se pudieron cargar tus tareas: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void tomarTareaSeleccionada() {
+        int row = tareasDisponiblesTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione una tarea", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int modelRow = tareasDisponiblesTable.convertRowIndexToModel(row);
+        String tareaId = (String) tareasDisponiblesModel.getValueAt(modelRow, 0);
+        try {
+            MantenimientoTaskService.getInstance().tomarTarea(tareaId, usuarioActual.getId(), usuarioActual.getNombreCompleto());
+            refrescarTareasDisponibles();
+            refrescarMisTareas();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "No se pudo tomar la tarea: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void completarTareaSeleccionada() {
+        int row = misTareasTable.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione una tarea", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int modelRow = misTareasTable.convertRowIndexToModel(row);
+        String tareaId = (String) misTareasModel.getValueAt(modelRow, 0);
+
+        JTextArea area = new JTextArea(4, 30);
+        JCheckBox reactivar = new JCheckBox("Reactivar sensor", true);
+        JPanel panel = new JPanel(new BorderLayout(5,5));
+        panel.add(new JLabel("Observaciones:"), BorderLayout.NORTH);
+        panel.add(new JScrollPane(area), BorderLayout.CENTER);
+        panel.add(reactivar, BorderLayout.SOUTH);
+        int option = JOptionPane.showConfirmDialog(this, panel, "Completar tarea", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (option != JOptionPane.OK_OPTION) {
+            return;
+        }
+        try {
+            MantenimientoTaskService.getInstance().completarTarea(tareaId, usuarioActual.getId(), area.getText(), reactivar.isSelected());
+            refrescarMisTareas();
+            refrescarTareasDisponibles();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "No se pudo completar la tarea: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -547,22 +573,6 @@ public class TecnicoFrame extends JFrame {
         }
     }
 
-    private void actualizarEstadoSensor(String nuevoEstado) {
-        int row = sensoresTable.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Seleccione un sensor.", "Aviso", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        int modelRow = sensoresTable.convertRowIndexToModel(row);
-        String id = (String) sensoresModel.getValueAt(modelRow, 0);
-        try {
-            SensorService.getInstance().actualizarEstado(id, nuevoEstado);
-            JOptionPane.showMessageDialog(this, "Estado del sensor actualizado a " + nuevoEstado + ".", "Éxito", JOptionPane.INFORMATION_MESSAGE);
-            refrescarSensores();
-        } catch (ErrorConexionCassandraException e) {
-            JOptionPane.showMessageDialog(this, "No se pudo actualizar el sensor: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-        }
-    }
 
     private String obtenerNombreProceso(String procesoId) {
         if (procesoId == null || procesoId.isBlank()) {

@@ -23,6 +23,16 @@ public class Application {
                 } catch (Exception autoAlertEx) {
                     System.err.println("Advertencia: no se pudo iniciar el scheduler de alertas automáticas: " + autoAlertEx.getMessage());
                 }
+                try {
+                    services.ControlTecnicoMonitorService.getInstance().iniciar();
+                } catch (Exception controlEx) {
+                    System.err.println("Advertencia: no se pudo iniciar el monitoreo técnico: " + controlEx.getMessage());
+                }
+                try {
+                    services.MantenimientoSchedulerService.getInstance().iniciar();
+                } catch (Exception maintEx) {
+                    System.err.println("Advertencia: no se pudo iniciar el scheduler de mantenimiento: " + maintEx.getMessage());
+                }
 
                 Class<?> loginCls = Class.forName("ui.LoginFrame");
                 Object loginFrame = loginCls.getDeclaredConstructor().newInstance();

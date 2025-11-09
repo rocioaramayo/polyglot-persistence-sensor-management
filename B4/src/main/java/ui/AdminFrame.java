@@ -4,11 +4,14 @@ import exceptions.ErrorConexionCassandraException;
 import exceptions.ErrorConexionMongoException;
 import modelo.Alerta;
 import modelo.AlertRule;
+import modelo.MantenimientoConfig;
+import modelo.MantenimientoTask;
 import modelo.Sensor;
 import modelo.Usuario;
 import repository.AlertaMongoDAO;
 import repository.UsuarioMongoDAO;
 import services.AlertRuleService;
+import services.MantenimientoTaskService;
 import services.SensorService;
 
 import javax.swing.*;
@@ -22,6 +25,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -73,6 +77,7 @@ public class AdminFrame extends JFrame {
         tabs.addTab("Sensores", crearPanelSensores());
         tabs.addTab("Técnicos", crearPanelTecnicos());
         tabs.addTab("Alertas", crearPanelAlertas());
+        tabs.addTab("Mantenimiento", crearPanelMantenimiento());
 
         JPanel header = new JPanel(new BorderLayout());
         JButton cerrarBtn = new JButton("Cerrar");
@@ -393,13 +398,19 @@ public class AdminFrame extends JFrame {
             if (row < 0) { JOptionPane.showMessageDialog(this, "Selecciona un sensor", "Aviso", JOptionPane.WARNING_MESSAGE); return; }
             int modelRow = table.convertRowIndexToModel(row);
             String id = (String) model.getValueAt(modelRow, 0);
+            String nombreSensor = (String) model.getValueAt(modelRow, 1);
             String estado = (String) model.getValueAt(modelRow, 5);
             boolean activa = "ACTIVO".equalsIgnoreCase(estado);
             try {
                 repository.SensorCassandraDAO.getInstance().actualizarEstado(id, activa ? "INACTIVO" : "ACTIVO");
+                if (activa) {
+                    MantenimientoTaskService.getInstance().crearTareaFalla(id, nombreSensor, "Marcado como inactivo por administrador");
+                }
                 cargarSensores(model);
             } catch (exceptions.ErrorConexionCassandraException ex) {
                 JOptionPane.showMessageDialog(this, "Error actualizando estado: "+ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                // ignora problemas de tarea
             }
         });
 
@@ -660,6 +671,110 @@ public class AdminFrame extends JFrame {
         return panel;
     }
 
+    private JPanel crearPanelMantenimiento() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        JPanel config = new JPanel(new GridBagLayout());
+        config.setBorder(BorderFactory.createTitledBorder("Programación de revisiones"));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5,5,5,5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JComboBox<SensorItem> sensorCombo = new JComboBox<>(construirModeloSensores());
+        SpinnerNumberModel diasModel = new SpinnerNumberModel(30, 1, 365, 1);
+        JSpinner frecuenciaSpinner = new JSpinner(diasModel);
+        JLabel ultimaRevisionLbl = new JLabel("-");
+
+        sensorCombo.addActionListener(e -> actualizarInfoMantenimiento((SensorItem) sensorCombo.getSelectedItem(), ultimaRevisionLbl, frecuenciaSpinner));
+        actualizarInfoMantenimiento((SensorItem) sensorCombo.getSelectedItem(), ultimaRevisionLbl, frecuenciaSpinner);
+
+        gbc.gridx=0; gbc.gridy=0; config.add(new JLabel("Sensor:"), gbc);
+        gbc.gridx=1; gbc.weightx=1; config.add(sensorCombo, gbc);
+        gbc.weightx=0;
+        gbc.gridx=0; gbc.gridy=1; config.add(new JLabel("Frecuencia (días):"), gbc);
+        gbc.gridx=1; config.add(frecuenciaSpinner, gbc);
+        gbc.gridx=0; gbc.gridy=2; config.add(new JLabel("Última revisión:"), gbc);
+        gbc.gridx=1; config.add(ultimaRevisionLbl, gbc);
+
+        DefaultTableModel tareasModel = new DefaultTableModel(new Object[]{"ID","Sensor","Tipo","Estado","Fecha","Técnico","Motivo"},0){
+            @Override public boolean isCellEditable(int r,int c){return false;}
+        };
+        JTable tareasTable = new JTable(tareasModel);
+        tareasTable.setAutoCreateRowSorter(true);
+        cargarTareasMantenimiento(tareasModel);
+
+        DefaultTableModel historialModel = new DefaultTableModel(new Object[]{"ID","Sensor","Tipo","Fecha fin","Técnico","Observaciones"},0){
+            @Override public boolean isCellEditable(int r,int c){return false;}
+        };
+        JTable historialTable = new JTable(historialModel);
+        historialTable.setAutoCreateRowSorter(true);
+        cargarHistorialMantenimiento(historialModel);
+
+        JTabbedPane tablasTareas = new JTabbedPane();
+        tablasTareas.addTab("Pendientes", new JScrollPane(tareasTable));
+        tablasTareas.addTab("Historial", new JScrollPane(historialTable));
+
+        JButton guardarBtn = new JButton("Guardar frecuencia");
+        guardarBtn.addActionListener(e -> {
+            SensorItem item = (SensorItem) sensorCombo.getSelectedItem();
+            if (item == null || !item.tieneId()) {
+                JOptionPane.showMessageDialog(this, "Seleccione un sensor", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            try {
+                int dias = (Integer) frecuenciaSpinner.getValue();
+                MantenimientoTaskService.getInstance().configurarFrecuencia(item.id(), dias);
+                JOptionPane.showMessageDialog(this, "Frecuencia actualizada", "Info", JOptionPane.INFORMATION_MESSAGE);
+                actualizarInfoMantenimiento(item, ultimaRevisionLbl, frecuenciaSpinner);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "No se pudo guardar: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        JButton crearManualBtn = new JButton("Crear tarea manual");
+        crearManualBtn.addActionListener(e -> {
+            SensorItem item = (SensorItem) sensorCombo.getSelectedItem();
+            if (item == null || !item.tieneId()) {
+                JOptionPane.showMessageDialog(this, "Seleccione un sensor", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String motivo = JOptionPane.showInputDialog(this, "Motivo de la revisión", "Revisión manual");
+            if (motivo == null) return;
+            try {
+                MantenimientoTaskService.getInstance().crearTareaManual(item.id(), item.toString(), motivo, LocalDateTime.now());
+                JOptionPane.showMessageDialog(this, "Tarea creada", "Info", JOptionPane.INFORMATION_MESSAGE);
+                cargarTareasMantenimiento(tareasModel);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "No se pudo crear la tarea: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        gbc.gridx=0; gbc.gridy=3; gbc.gridwidth=2; gbc.anchor = GridBagConstraints.EAST;
+        JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        botones.add(crearManualBtn);
+        botones.add(guardarBtn);
+        config.add(botones, gbc);
+
+        JButton refrescarBtn = new JButton("Refrescar");
+        refrescarBtn.addActionListener(e -> {
+            cargarTareasMantenimiento(tareasModel);
+            cargarHistorialMantenimiento(historialModel);
+        });
+
+        JButton asignarBtn = new JButton("Asignar técnico");
+        asignarBtn.addActionListener(e -> asignarTecnicoATarea(tareasTable, tareasModel));
+
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        acciones.add(refrescarBtn);
+        acciones.add(asignarBtn);
+
+        panel.add(config, BorderLayout.NORTH);
+        panel.add(tablasTareas, BorderLayout.CENTER);
+        panel.add(acciones, BorderLayout.SOUTH);
+        return panel;
+    }
+
     private void cargarAlertas(DefaultTableModel model) {
         try {
             List<Alerta> alertas = new AlertaMongoDAO().listarActivas();
@@ -676,6 +791,105 @@ public class AdminFrame extends JFrame {
             }
         } catch (ErrorConexionMongoException e) {
             JOptionPane.showMessageDialog(this, "No se pudieron cargar alertas: "+e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void actualizarInfoMantenimiento(SensorItem item, JLabel ultimaRevisionLbl, JSpinner frecuenciaSpinner) {
+        if (item == null || !item.tieneId()) {
+            ultimaRevisionLbl.setText("-");
+            return;
+        }
+        MantenimientoConfig config = MantenimientoTaskService.getInstance().obtenerConfig(item.id());
+        if (config != null) {
+            if (config.getFrecuenciaDias() != null) {
+                frecuenciaSpinner.setValue(config.getFrecuenciaDias());
+            }
+        } else {
+            ultimaRevisionLbl.setText("-");
+        }
+        LocalDateTime ultimaReal = MantenimientoTaskService.getInstance().obtenerUltimaRevisionCompleta(item.id());
+        if (ultimaReal == null && config != null) {
+            ultimaReal = config.getUltimaRevision();
+        }
+        ultimaRevisionLbl.setText(ultimaReal != null ? ALERT_DATE_FORMAT.format(ultimaReal) : "-");
+    }
+
+    private void cargarTareasMantenimiento(DefaultTableModel model) {
+        try {
+            List<MantenimientoTask> tareas = MantenimientoTaskService.getInstance().listarPendientes();
+            model.setRowCount(0);
+            for (MantenimientoTask t : tareas) {
+                String fecha = t.getFechaProgramada() != null ? ALERT_DATE_FORMAT.format(t.getFechaProgramada()) : "-";
+                model.addRow(new Object[]{
+                        t.getId(),
+                        t.getSensorNombre(),
+                        t.getTipo(),
+                        t.getEstado(),
+                        fecha,
+                        t.getTecnicoNombre() != null ? t.getTecnicoNombre() : "-",
+                        t.getMotivo()
+                });
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "No se pudieron cargar las tareas: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void cargarHistorialMantenimiento(DefaultTableModel model) {
+        try {
+            List<MantenimientoTask> historial = MantenimientoTaskService.getInstance().listarHistorial(50);
+            model.setRowCount(0);
+            for (MantenimientoTask t : historial) {
+                model.addRow(new Object[]{
+                        t.getId(),
+                        t.getSensorNombre(),
+                        t.getTipo(),
+                        t.getFechaCompletada() != null ? ALERT_DATE_FORMAT.format(t.getFechaCompletada()) : "-",
+                        t.getTecnicoNombre() != null ? t.getTecnicoNombre() : "-",
+                        t.getObservaciones() != null ? t.getObservaciones() : "-"
+                });
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "No se pudo cargar el historial: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void asignarTecnicoATarea(JTable table, DefaultTableModel model) {
+        int row = table.getSelectedRow();
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione una tarea", "Aviso", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int modelRow = table.convertRowIndexToModel(row);
+        String tareaId = (String) model.getValueAt(modelRow, 0);
+        Usuario tecnico = seleccionarTecnico();
+        if (tecnico == null) return;
+        try {
+            MantenimientoTaskService.getInstance().asignarTecnico(tareaId, tecnico.getId(), tecnico.getNombreCompleto());
+            cargarTareasMantenimiento(model);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "No se pudo asignar: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private Usuario seleccionarTecnico() {
+        try {
+            List<Usuario> tecnicos = new UsuarioMongoDAO().listarPorRol("TECNICO");
+            if (tecnicos.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "No hay técnicos disponibles", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return null;
+            }
+            String[] opciones = tecnicos.stream()
+                    .map(u -> u.getId() + " - " + (u.getNombreCompleto() != null ? u.getNombreCompleto() : u.getEmail()))
+                    .toArray(String[]::new);
+            String seleccion = (String) JOptionPane.showInputDialog(this, "Asignar técnico",
+                    "Seleccionar", JOptionPane.PLAIN_MESSAGE, null, opciones, opciones[0]);
+            if (seleccion == null) return null;
+            int idx = java.util.Arrays.asList(opciones).indexOf(seleccion);
+            return tecnicos.get(idx);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "No se pudieron cargar los técnicos: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            return null;
         }
     }
 
