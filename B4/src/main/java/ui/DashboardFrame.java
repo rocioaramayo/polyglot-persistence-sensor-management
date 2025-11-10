@@ -385,7 +385,6 @@ public class DashboardFrame extends JFrame {
         gruposListModel = new DefaultListModel<>();
         JList<String> gruposList = new JList<>(gruposListModel);
         gruposList.setVisibleRowCount(8);
-        panel.add(new JScrollPane(gruposList), BorderLayout.CENTER);
 
         JPanel form = new JPanel(new GridBagLayout());
         form.setBorder(BorderFactory.createTitledBorder("Crear nuevo grupo"));
@@ -473,7 +472,7 @@ public class DashboardFrame extends JFrame {
             }
         });
 
-        panel.add(form, BorderLayout.SOUTH);
+        panel.add(form, BorderLayout.CENTER);
         // Cargar usuarios activos para el selector de miembros
         try {
             List<Usuario> usuarios = UsuarioService.getInstance().listarUsuariosActivos();
