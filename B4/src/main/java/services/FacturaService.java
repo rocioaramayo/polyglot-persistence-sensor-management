@@ -3,6 +3,7 @@ package services;
 import modelo.Factura;
 import modelo.CuentaCorriente;
 import modelo.Movimiento;
+import modelo.Usuario;
 import repository.FacturaMySQLRepository;
 import repository.CuentaMySQLRepository;
 import repository.MovimientoMySQLRepository;
@@ -11,6 +12,7 @@ import connections.MySQLPool;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.UUID;
 
 public class FacturaService {
@@ -25,13 +27,50 @@ public class FacturaService {
         return instance;
     }
 
-    public void crearFactura(String usuarioId, Double monto, String descripcion)
+    // Overload que recibe solicitudId explícito e implementa idempotencia
+    public void crearFactura(String usuarioId, String solicitudId, Double monto, String descripcion)
             throws ErrorConexionMySQLException {
-        Factura factura = new Factura(usuarioId, monto, descripcion);
-        if (factura.getSolicitudId() == null || factura.getSolicitudId().isBlank()) {
-            factura.setSolicitudId(UUID.randomUUID().toString());
+        if (solicitudId == null || solicitudId.isBlank()) {
+            throw new IllegalArgumentException("solicitudId es requerido para facturación");
+        }
+        try {
+            List<Factura> existentes = FacturaMySQLRepository.getInstance().obtenerPorSolicitudId(solicitudId);
+            if (existentes != null && !existentes.isEmpty()) {
+                // Ya existe factura para esta solicitud: idempotente
+                return;
+            }
+        } catch (Exception ignored) {
+            // Si el prechequeo falla, continuamos y confiamos en la UNIQUE de DB
         }
 
+        Factura factura = new Factura(usuarioId, monto, descripcion);
+        factura.setSolicitudId(solicitudId);
+
+        // Enriquecer con snapshot del usuario, si estuviera disponible
+        try {
+            Usuario usuario = UsuarioService.getInstance().obtenerPorId(usuarioId);
+            if (usuario != null) {
+                factura.setNombreFacturacion(usuario.getNombre());
+                factura.setApellidoFacturacion(usuario.getApellido());
+                factura.setDireccionFacturacion(usuario.getDireccion());
+                factura.setTelefonoFacturacion(usuario.getTelefono());
+            }
+        } catch (Exception ignored) {
+            // No impedimos la facturación si falla la obtención del snapshot
+        }
+
+        ejecutarTransaccionCrearFacturaYCargo(usuarioId, monto, descripcion, factura);
+    }
+
+    // Método existente: delega generando un solicitudId UUID si no lo tiene
+    public void crearFactura(String usuarioId, Double monto, String descripcion)
+            throws ErrorConexionMySQLException {
+        String solicitudId = UUID.randomUUID().toString();
+        crearFactura(usuarioId, solicitudId, monto, descripcion);
+    }
+
+    private void ejecutarTransaccionCrearFacturaYCargo(String usuarioId, Double monto, String descripcion, Factura factura)
+            throws ErrorConexionMySQLException {
         Connection conn = null;
         try {
             conn = MySQLPool.getInstance().getConnection();

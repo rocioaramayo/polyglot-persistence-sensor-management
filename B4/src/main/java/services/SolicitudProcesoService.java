@@ -138,43 +138,17 @@ public class SolicitudProcesoService {
             s.setObservaciones(observacionesGeneradas);
         }
 
-        Double monto =  proceso != null && proceso.getCosto() != null ? proceso.getCosto() : 0.0;
+        Double monto = proceso != null && proceso.getCosto() != null ? proceso.getCosto() : 0.0;
 
         String usuarioIdCanonical = s.getUsuarioId();
 
-        // Crear factura en MySQL usando identificador canÃ³nico del usuario
-        Factura factura = new Factura(usuarioIdCanonical, monto, "Factura por solicitud " + solicitudId);
-        factura.setSolicitudId(solicitudId);
+        // Hook de facturación: crear factura atómica y registrar cargo en una única transacción
         try {
-            Usuario usuario = UsuarioService.getInstance().obtenerPorId(s.getUsuarioId());
-            if (usuario != null) {
-                factura.setNombreFacturacion(usuario.getNombre());
-                factura.setApellidoFacturacion(usuario.getApellido());
-                factura.setDireccionFacturacion(usuario.getDireccion());
-                factura.setTelefonoFacturacion(usuario.getTelefono());
-            }
-        } catch (ErrorConexionMongoException ex) {
-            System.err.println("No se pudo obtener informaciÃƒÂ³n adicional del usuario " + s.getUsuarioId() + ": " + ex.getMessage());
-        }
-        FacturaMySQLRepository.getInstance().crear(factura);
-
-        // Si tenemos un usuario numÃƒÂ©rico, actualizar cuenta y crear movimiento
-        CuentaCorriente cuenta = CuentaService.getInstance().obtenerOCrearCuenta(usuarioIdCanonical);
-        if (cuenta != null) {
-            double saldoAnterior = cuenta.getSaldo() != null ? cuenta.getSaldo() : 0.0;
-            double nuevoSaldo = saldoAnterior - monto;
-            CuentaMySQLRepository.getInstance().actualizarSaldo(cuenta.getId(), nuevoSaldo);
-            cuenta.setSaldo(nuevoSaldo);
-
-            Movimiento mov = new Movimiento(
-                    cuenta.getId(),
-                    "CARGO",
-                    monto,
-                    saldoAnterior,
-                    nuevoSaldo,
-                    "Factura por solicitud " + solicitudId,
-                    solicitudId);
-            MovimientoMySQLRepository.getInstance().crear(mov);
+            String descripcionFactura = "Factura por solicitud " + solicitudId + (proceso != null && proceso.getNombre() != null ? " - " + proceso.getNombre() : "");
+            FacturaService.getInstance().crearFactura(usuarioIdCanonical, solicitudId, monto, descripcionFactura);
+        } catch (ErrorConexionMySQLException ex) {
+            // Registrar el error pero no abortar la finalización; podría reintentarse luego
+            System.err.println("Error al generar factura para solicitud " + solicitudId + ": " + ex.getMessage());
         }
 
         // Crear alerta y mensaje para notificar al usuario que su informe estÃƒÂ¡ listo
