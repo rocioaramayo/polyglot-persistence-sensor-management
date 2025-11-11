@@ -350,7 +350,9 @@ public class AdminFrame extends JFrame {
                         return;
                     }
                 }
-                services.SensorService.getInstance().crearSensor(
+                // RBAC: Usar método con validación de roles (requiere ADMIN)
+                services.SensorService.getInstance().crearSensorConValidacion(
+                        token,
                         nombre,
                         codigo.isEmpty() ? null : codigo,
                         tipo,
@@ -376,6 +378,11 @@ public class AdminFrame extends JFrame {
                 fechaInstField.setText("");
                 observacionesArea.setText("");
                 cargarSensores(model);
+            } catch (exceptions.AuthorizationException authEx) {
+                JOptionPane.showMessageDialog(this, 
+                    "Acceso denegado: " + authEx.getMessage() + "\n\nSolo ADMINISTRADORES pueden crear sensores.", 
+                    "Error de Autorización", 
+                    JOptionPane.ERROR_MESSAGE);
             } catch (NumberFormatException nfe) {
                 JOptionPane.showMessageDialog(this, "Lat/Long deben ser numéricos", "Error", JOptionPane.ERROR_MESSAGE);
             } catch (exceptions.ErrorConexionCassandraException ex) {
@@ -402,11 +409,21 @@ public class AdminFrame extends JFrame {
             String estado = (String) model.getValueAt(modelRow, 5);
             boolean activa = "ACTIVO".equalsIgnoreCase(estado);
             try {
-                repository.SensorCassandraDAO.getInstance().actualizarEstado(id, activa ? "INACTIVO" : "ACTIVO");
+                // RBAC: Usar método con validación de roles (requiere ADMIN)
+                services.SensorService.getInstance().actualizarEstadoConValidacion(
+                    token, 
+                    id, 
+                    activa ? "INACTIVO" : "ACTIVO"
+                );
                 if (activa) {
                     MantenimientoTaskService.getInstance().crearTareaFalla(id, nombreSensor, "Marcado como inactivo por administrador");
                 }
                 cargarSensores(model);
+            } catch (exceptions.AuthorizationException ex) {
+                JOptionPane.showMessageDialog(this, 
+                    "Acceso denegado: " + ex.getMessage() + "\n\nSolo ADMINISTRADORES pueden actualizar el estado de sensores.", 
+                    "Error de Autorización", 
+                    JOptionPane.ERROR_MESSAGE);
             } catch (exceptions.ErrorConexionCassandraException ex) {
                 JOptionPane.showMessageDialog(this, "Error actualizando estado: "+ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {

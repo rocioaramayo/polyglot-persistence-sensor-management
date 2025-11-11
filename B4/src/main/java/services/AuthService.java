@@ -34,6 +34,11 @@ public class AuthService {
             return null;
         }
 
+        // Verificar que el usuario esté activo
+        if (usuario.getActivo() == null || !usuario.getActivo()) {
+            return null;  // Usuario desactivado, no puede iniciar sesión
+        }
+
         String passwordHash = hashPassword(password);
         if (!usuario.getPasswordHash().equals(passwordHash)) {
             return null;

@@ -1,5 +1,6 @@
 package services;
 
+import exceptions.AuthorizationException;
 import exceptions.ErrorConexionMySQLException;
 import modelo.CuentaCorriente;
 import modelo.Factura;
@@ -10,12 +11,22 @@ import repository.FacturaMySQLRepository;
 import repository.MovimientoMySQLRepository;
 import repository.PagoMySQLRepository;
 import connections.MySQLPool;
+import utils.AuthorizationHelper;
+import utils.Roles;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Servicio para gestión de cuentas corrientes, depósitos y pagos.
+ * 
+ * RBAC Rules:
+ * - depositar(): Solo USUARIO puede depositar dinero
+ * - pagarFactura(): Solo USUARIO puede pagar facturas
+ * - TECNICO y ADMINISTRADOR NO pueden realizar operaciones financieras
+ */
 public class CuentaService {
     private static CuentaService instance;
 
@@ -157,5 +168,78 @@ public class CuentaService {
             return Collections.emptyList();
         }
         return FacturaMySQLRepository.getInstance().obtenerPorUsuario(usuarioId);
+    }
+
+    // ========================================
+    // MÉTODOS CON VALIDACIÓN DE ROLES (RBAC)
+    // ========================================
+
+    /**
+     * Deposita dinero en la cuenta del usuario.
+     * RBAC: Solo permitido para rol USUARIO.
+     * 
+     * @param token Token de sesión del usuario
+     * @param monto Monto a depositar
+     * @param referencia Referencia opcional del depósito
+     * @throws AuthorizationException si el usuario no tiene rol USUARIO
+     * @throws ErrorConexionMySQLException si hay error en la base de datos
+     */
+    public void depositarConValidacion(String token, double monto, String referencia) 
+            throws AuthorizationException, ErrorConexionMySQLException {
+        // RBAC: Solo USUARIO puede depositar
+        AuthorizationHelper.validarUsuario(token);
+        String usuarioId = AuthorizationHelper.obtenerUsuarioId(token);
+        
+        // Llamar al método original
+        depositar(usuarioId, monto, referencia);
+    }
+
+    /**
+     * Paga una factura usando el saldo de la cuenta.
+     * RBAC: Solo permitido para rol USUARIO.
+     * 
+     * @param token Token de sesión del usuario
+     * @param facturaId ID de la factura a pagar
+     * @param metodoPago Método de pago
+     * @throws AuthorizationException si el usuario no tiene rol USUARIO
+     * @throws ErrorConexionMySQLException si hay error en la base de datos
+     * @throws SQLException si hay error en la transacción
+     */
+    public void pagarFacturaConValidacion(String token, int facturaId, String metodoPago) 
+            throws AuthorizationException, ErrorConexionMySQLException, SQLException {
+        // RBAC: Solo USUARIO puede pagar facturas
+        AuthorizationHelper.validarUsuario(token);
+        String usuarioId = AuthorizationHelper.obtenerUsuarioId(token);
+        
+        // Llamar al método original
+        pagarFactura(usuarioId, facturaId, metodoPago);
+    }
+
+    /**
+     * Obtiene los movimientos de la cuenta del usuario autenticado.
+     * 
+     * @param token Token de sesión del usuario
+     * @return Lista de movimientos
+     * @throws AuthorizationException si el token es inválido
+     * @throws ErrorConexionMySQLException si hay error en la base de datos
+     */
+    public List<Movimiento> obtenerMovimientosConValidacion(String token) 
+            throws AuthorizationException, ErrorConexionMySQLException {
+        String usuarioId = AuthorizationHelper.obtenerUsuarioId(token);
+        return obtenerMovimientos(usuarioId);
+    }
+
+    /**
+     * Obtiene las facturas del usuario autenticado.
+     * 
+     * @param token Token de sesión del usuario
+     * @return Lista de facturas
+     * @throws AuthorizationException si el token es inválido
+     * @throws ErrorConexionMySQLException si hay error en la base de datos
+     */
+    public List<Factura> obtenerFacturasConValidacion(String token) 
+            throws AuthorizationException, ErrorConexionMySQLException {
+        String usuarioId = AuthorizationHelper.obtenerUsuarioId(token);
+        return obtenerFacturas(usuarioId);
     }
 }

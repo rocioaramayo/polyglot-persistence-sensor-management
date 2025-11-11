@@ -500,13 +500,19 @@ public class TecnicoFrame extends JFrame {
         }
         try {
             if ("aprobado".equalsIgnoreCase(estado)) {
-                SolicitudProcesoService.getInstance().aprobarSolicitud(id);
+                // RBAC: Usar método con validación de roles (requiere TECNICO o ADMIN)
+                SolicitudProcesoService.getInstance().aprobarSolicitudConValidacion(token, id);
             } else {
                 SolicitudProcesoService.getInstance().rechazarSolicitud(id);
             }
             JOptionPane.showMessageDialog(this, "Estado actualizado.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             refrescarPendientes();
             refrescarAsignadas();
+        } catch (exceptions.AuthorizationException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Acceso denegado: " + e.getMessage() + "\n\nSolo TÉCNICOS y ADMINISTRADORES pueden aprobar solicitudes.", 
+                "Error de Autorización", 
+                JOptionPane.ERROR_MESSAGE);
         } catch (ErrorConexionMongoException e) {
             JOptionPane.showMessageDialog(this, "No se pudo actualizar el estado: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
@@ -540,10 +546,16 @@ public class TecnicoFrame extends JFrame {
             return;
         }
         try {
-            SolicitudProcesoService.getInstance().ejecutarSolicitud(id);
+            // RBAC: Usar método con validación de roles (requiere TECNICO o ADMIN)
+            SolicitudProcesoService.getInstance().ejecutarSolicitudConValidacion(token, id);
             JOptionPane.showMessageDialog(this, "Solicitud en ejecución.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             refrescarAsignadas();
             refrescarPendientes();
+        } catch (exceptions.AuthorizationException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Acceso denegado: " + e.getMessage() + "\n\nSolo TÉCNICOS y ADMINISTRADORES pueden ejecutar solicitudes.", 
+                "Error de Autorización", 
+                JOptionPane.ERROR_MESSAGE);
         } catch (ErrorConexionMongoException | ErrorConexionCassandraException e) {
             JOptionPane.showMessageDialog(this, "No se pudo iniciar la ejecución: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
@@ -573,10 +585,16 @@ public class TecnicoFrame extends JFrame {
             return;
         }
         try {
-            SolicitudProcesoService.getInstance().completarSolicitud(id);
+            // RBAC: Usar método con validación de roles (requiere TECNICO o ADMIN)
+            SolicitudProcesoService.getInstance().completarSolicitudConValidacion(token, id);
             JOptionPane.showMessageDialog(this, "Solicitud completada. Se generó la facturación correspondiente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             refrescarAsignadas();
             refrescarPendientes();
+        } catch (exceptions.AuthorizationException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Acceso denegado: " + e.getMessage() + "\n\nSolo TÉCNICOS y ADMINISTRADORES pueden completar solicitudes.", 
+                "Error de Autorización", 
+                JOptionPane.ERROR_MESSAGE);
         } catch (ErrorConexionMongoException | ErrorConexionMySQLException e) {
             JOptionPane.showMessageDialog(this, "No se pudo completar la solicitud: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }

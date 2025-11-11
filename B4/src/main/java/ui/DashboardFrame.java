@@ -1004,14 +1004,24 @@ public class DashboardFrame extends JFrame {
         }
 
         try {
+            // RBAC: Usar método con validación de roles (solo USUARIO, bloquea TÉCNICO)
             String solicitudId = SolicitudProcesoService.getInstance()
-                    .crearSolicitudUsuario(usuarioActual.getId(), item.id, params);
+                    .crearSolicitudConToken(token, item.id, params);
+                    
             JOptionPane.showMessageDialog(this,
                     "Solicitud enviada con éxito. ID: " + solicitudId,
                     "Éxito",
                     JOptionPane.INFORMATION_MESSAGE);
             limpiarFormularioSolicitud();
             refrescarSolicitudesUsuario();
+        } catch (AuthorizationException ex) {
+            // TÉCNICO o ADMIN no puede crear solicitudes
+            JOptionPane.showMessageDialog(this, 
+                "Acceso denegado: " + ex.getMessage() + 
+                "\n\nSolo los USUARIOS pueden crear solicitudes de proceso." +
+                "\nLos TÉCNICOS aprueban y ejecutan solicitudes, pero no las crean.", 
+                "Error de Autorización", 
+                JOptionPane.ERROR_MESSAGE);
         } catch (IllegalArgumentException | IllegalStateException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
         } catch (ErrorConexionMongoException | ErrorConexionCassandraException ex) {
@@ -1247,13 +1257,22 @@ public class DashboardFrame extends JFrame {
         try {
             double monto = Double.parseDouble(depositoField.getText().trim());
             String referencia = referenciaDepositoField.getText();
-            CuentaService.getInstance().depositar(usuarioActual.getId(), monto, referencia);
+            
+            // RBAC: Usar método con validación de roles
+            CuentaService.getInstance().depositarConValidacion(token, monto, referencia);
+            
             JOptionPane.showMessageDialog(this, "Depósito aplicado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             depositoField.setText("");
             referenciaDepositoField.setText("");
             refrescarCuenta();
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Ingrese un monto válido.", "Aviso", JOptionPane.WARNING_MESSAGE);
+        } catch (AuthorizationException e) {
+            // Usuario no tiene permisos (es TÉCNICO o ADMIN)
+            JOptionPane.showMessageDialog(this, 
+                "Acceso denegado: " + e.getMessage() + "\n\nSolo los USUARIOS pueden depositar dinero.", 
+                "Error de Autorización", 
+                JOptionPane.ERROR_MESSAGE);
         } catch (IllegalArgumentException | IllegalStateException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
         } catch (ErrorConexionMySQLException e) {
@@ -1283,9 +1302,17 @@ public class DashboardFrame extends JFrame {
             return;
         }
         try {
-            CuentaService.getInstance().pagarFactura(usuarioActual.getId(), (Integer) idObj, "SALDO_CUENTA");
+            // RBAC: Usar método con validación de roles
+            CuentaService.getInstance().pagarFacturaConValidacion(token, (Integer) idObj, "SALDO_CUENTA");
+            
             JOptionPane.showMessageDialog(this, "Factura pagada correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             refrescarCuenta();
+        } catch (AuthorizationException e) {
+            // Usuario no tiene permisos (es TÉCNICO o ADMIN)
+            JOptionPane.showMessageDialog(this, 
+                "Acceso denegado: " + e.getMessage() + "\n\nSolo los USUARIOS pueden pagar facturas.", 
+                "Error de Autorización", 
+                JOptionPane.ERROR_MESSAGE);
         } catch (IllegalArgumentException | IllegalStateException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
         } catch (ErrorConexionMySQLException | SQLException e) {

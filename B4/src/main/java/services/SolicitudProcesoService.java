@@ -1,5 +1,6 @@
 package services;
 
+import exceptions.AuthorizationException;
 import exceptions.ErrorConexionCassandraException;
 import exceptions.ErrorConexionMongoException;
 import exceptions.ErrorConexionMySQLException;
@@ -21,12 +22,21 @@ import repository.AlertaMongoDAO;
 import repository.MensajeMongoDAO;
 import modelo.Mensaje;
 import modelo.Alerta;
+import utils.AuthorizationHelper;
+import utils.Roles;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Servicio para gestión de solicitudes de procesos.
+ * 
+ * RBAC Rules:
+ * - crearSolicitudUsuario(): Solo USUARIO puede crear solicitudes
+ * - TECNICO NO puede crear solicitudes (solo aprobarlas/ejecutarlas)
+ */
 public class SolicitudProcesoService {
 
     private static SolicitudProcesoService instance;
@@ -271,8 +281,107 @@ public class SolicitudProcesoService {
             throw new IllegalArgumentException("ID de solicitud no es un UUID valido: " + id);
         }
     }
-}
 
+    // ========================================
+    // MÉTODOS CON VALIDACIÓN DE ROLES (RBAC)
+    // ========================================
+
+    /**
+     * Crea una solicitud de proceso con validación de rol.
+     * RBAC: Solo permitido para rol USUARIO. TECNICO está bloqueado.
+     * 
+     * @param token Token de sesión del usuario
+     * @param procesoId ID del proceso a solicitar
+     * @param parametros Parámetros del proceso
+     * @return ID de la solicitud creada
+     * @throws AuthorizationException si el usuario no tiene rol USUARIO o es TECNICO
+     * @throws ErrorConexionMongoException si hay error en la base de datos
+     */
+    public String crearSolicitudConToken(String token, String procesoId, Map<String, Object> parametros) 
+            throws AuthorizationException, ErrorConexionMongoException, ErrorConexionCassandraException {
+        // RBAC: Solo USUARIO puede crear solicitudes
+        AuthorizationHelper.validarUsuario(token);
+        
+        // Prohibir explícitamente a TECNICO
+        AuthorizationHelper.prohibirRoles(token, Roles.TECNICO, Roles.ADMINISTRADOR);
+        
+        String usuarioId = AuthorizationHelper.obtenerUsuarioId(token);
+        
+        // Llamar al método existente con selección de sensor
+        return crearSolicitudUsuario(usuarioId, procesoId, parametros);
+    }
+
+    /**
+     * Aprueba una solicitud con validación de rol.
+     * RBAC: Solo permitido para rol TECNICO o ADMINISTRADOR.
+     * 
+     * @param token Token de sesión
+     * @param solicitudId ID de la solicitud a aprobar
+     * @throws AuthorizationException si el usuario no tiene permisos
+     * @throws ErrorConexionMongoException si hay error en la base de datos
+     */
+    public void aprobarSolicitudConValidacion(String token, String solicitudId) 
+            throws AuthorizationException, ErrorConexionMongoException {
+        // RBAC: Solo TECNICO o ADMIN pueden aprobar
+        AuthorizationHelper.validarRol(token, Roles.TECNICO, Roles.ADMINISTRADOR);
+        
+        aprobarSolicitud(solicitudId);
+    }
+
+    /**
+     * Asigna un técnico a una solicitud con validación de rol.
+     * RBAC: Solo permitido para rol TECNICO o ADMINISTRADOR.
+     * 
+     * @param token Token de sesión
+     * @param solicitudId ID de la solicitud
+     * @param tecnicoId ID del técnico a asignar
+     * @throws AuthorizationException si el usuario no tiene permisos
+     * @throws ErrorConexionMongoException si hay error en la base de datos
+     */
+    public void asignarTecnicoConValidacion(String token, String solicitudId, String tecnicoId) 
+            throws AuthorizationException, ErrorConexionMongoException {
+        // RBAC: Solo TECNICO o ADMIN pueden asignar
+        AuthorizationHelper.validarRol(token, Roles.TECNICO, Roles.ADMINISTRADOR);
+        
+        asignarTecnico(solicitudId, tecnicoId);
+    }
+
+    /**
+     * Ejecuta una solicitud con validación de rol.
+     * RBAC: Solo permitido para rol TECNICO o ADMINISTRADOR.
+     * 
+     * @param token Token de sesión
+     * @param solicitudId ID de la solicitud a ejecutar
+     * @throws AuthorizationException si el usuario no tiene permisos
+     * @throws ErrorConexionMongoException si hay error en la base de datos
+     * @throws ErrorConexionCassandraException si hay error en Cassandra
+     */
+    public void ejecutarSolicitudConValidacion(String token, String solicitudId) 
+            throws AuthorizationException, ErrorConexionMongoException, ErrorConexionCassandraException {
+        // RBAC: Solo TECNICO o ADMIN pueden ejecutar
+        AuthorizationHelper.validarRol(token, Roles.TECNICO, Roles.ADMINISTRADOR);
+        
+        ejecutarSolicitud(solicitudId);
+    }
+
+    /**
+     * Completa una solicitud con validación de rol.
+     * RBAC: Solo permitido para rol TECNICO o ADMINISTRADOR.
+     * 
+     * @param token Token de sesión
+     * @param solicitudId ID de la solicitud a completar
+     * @throws AuthorizationException si el usuario no tiene permisos
+     * @throws ErrorConexionMongoException si hay error en MongoDB
+     * @throws ErrorConexionMySQLException si hay error en MySQL
+     */
+    public void completarSolicitudConValidacion(String token, String solicitudId) 
+            throws AuthorizationException, ErrorConexionMongoException, ErrorConexionMySQLException {
+        // RBAC: Solo TECNICO o ADMIN pueden completar
+        AuthorizationHelper.validarRol(token, Roles.TECNICO, Roles.ADMINISTRADOR);
+        
+        completarSolicitud(solicitudId);
+    }
+}
 
 
 
