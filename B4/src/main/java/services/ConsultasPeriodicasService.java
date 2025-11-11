@@ -9,6 +9,7 @@ import repository.ProcesoMongoDAO;
 import repository.SolicitudProcesoMongoDAO;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -86,6 +87,17 @@ public class ConsultasPeriodicasService {
             hasta = LocalDateTime.now();
         }
         return new ConsultaPeriodicaMongoDAO().listarActivasHasta(hasta);
+    }
+
+    public List<ConsultaPeriodica> listarPorTecnico(String tecnicoId) throws ErrorConexionMongoException {
+        if (tecnicoId == null || tecnicoId.isBlank()) {
+            return Collections.emptyList();
+        }
+        return new ConsultaPeriodicaMongoDAO().listarPorTecnico(tecnicoId);
+    }
+
+    public List<ConsultaPeriodica> listarTodas() throws ErrorConexionMongoException {
+        return new ConsultaPeriodicaMongoDAO().listarTodas();
     }
 
     public void registrarEjecucionExitosa(ConsultaPeriodica consulta) throws ErrorConexionMongoException {

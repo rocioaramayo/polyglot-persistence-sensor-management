@@ -58,11 +58,30 @@ public class UsuarioMongoDAO {
     }
 
     public Usuario buscarPorId(String id) {
-        Document doc = collection.find(Filters.eq("_id", new ObjectId(id))).first();
+        if (id == null || id.isBlank()) {
+            return null;
+        }
+        Document doc = null;
+        if (ObjectId.isValid(id)) {
+            doc = collection.find(Filters.eq("_id", new ObjectId(id))).first();
+        }
+        if (doc == null) {
+            doc = collection.find(Filters.eq("_id", id)).first();
+        }
+        if (doc == null && id.contains("@")) {
+            doc = collection.find(Filters.eq("email", id)).first();
+        }
         if (doc == null) return null;
 
         Usuario usuario = new Usuario();
-        usuario.setId(id);
+        Object rawId = doc.get("_id");
+        if (rawId instanceof ObjectId) {
+            usuario.setId(((ObjectId) rawId).toHexString());
+        } else if (rawId != null) {
+            usuario.setId(rawId.toString());
+        } else {
+            usuario.setId(id);
+        }
         usuario.setNombre(doc.getString("nombre"));
         usuario.setApellido(doc.getString("apellido"));
         usuario.setEmail(doc.getString("email"));

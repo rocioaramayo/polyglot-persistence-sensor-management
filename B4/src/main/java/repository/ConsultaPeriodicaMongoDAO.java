@@ -5,10 +5,12 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.ReplaceOptions;
+import com.mongodb.client.model.Sorts;
 import connections.MongoPool;
 import exceptions.ErrorConexionMongoException;
 import modelo.ConsultaPeriodica;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 
 import java.time.LocalDateTime;
@@ -39,14 +41,41 @@ public class ConsultaPeriodicaMongoDAO {
 
     public List<ConsultaPeriodica> listarActivasHasta(LocalDateTime limite) {
         List<ConsultaPeriodica> consultas = new ArrayList<>();
-        Document filtro = new Document("activo", true)
-                .append("proxima_ejecucion", new Document("$lte", toDate(limite)));
-        try (MongoCursor<Document> cursor = collection.find(filtro).iterator()) {
+        LocalDateTime limiteEfectivo = limite != null ? limite : LocalDateTime.now();
+        java.util.Date limiteDate = toDate(limiteEfectivo);
+        ArrayList<Bson> vencimientos = new ArrayList<>();
+        vencimientos.add(Filters.eq("proxima_ejecucion", null));
+        vencimientos.add(Filters.exists("proxima_ejecucion", false));
+        if (limiteDate != null) {
+            vencimientos.add(Filters.lte("proxima_ejecucion", limiteDate));
+        }
+        Bson filtro = Filters.and(
+                Filters.eq("activo", true),
+                Filters.or(vencimientos.toArray(new Bson[0]))
+        );
+        try (MongoCursor<Document> cursor = collection.find(filtro)
+                .sort(Sorts.ascending("proxima_ejecucion"))
+                .iterator()) {
             while (cursor.hasNext()) {
                 consultas.add(toModel(cursor.next()));
             }
         }
         return consultas;
+    }
+
+    public List<ConsultaPeriodica> listarPorTecnico(String tecnicoId) {
+        if (tecnicoId == null || tecnicoId.isBlank()) {
+            return List.of();
+        }
+        Bson filtro = Filters.and(
+                Filters.eq("tecnico_id", tecnicoId),
+                Filters.eq("activo", true)
+        );
+        return listarPorFiltro(filtro);
+    }
+
+    public List<ConsultaPeriodica> listarTodas() {
+        return listarPorFiltro(null);
     }
 
     public void actualizarProgramacion(String id, LocalDateTime proxima, LocalDateTime ultima) {
@@ -132,5 +161,18 @@ public class ConsultaPeriodicaMongoDAO {
             return null;
         }
         return java.util.Date.from(dateTime.atZone(ZoneId.systemDefault()).toInstant());
+    }
+
+    private List<ConsultaPeriodica> listarPorFiltro(Bson filtro) {
+        List<ConsultaPeriodica> consultas = new ArrayList<>();
+        var iterable = filtro != null ? collection.find(filtro) : collection.find();
+        try (MongoCursor<Document> cursor = iterable
+                .sort(Sorts.ascending("proxima_ejecucion"))
+                .iterator()) {
+            while (cursor.hasNext()) {
+                consultas.add(toModel(cursor.next()));
+            }
+        }
+        return consultas;
     }
 }

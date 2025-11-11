@@ -143,6 +143,14 @@ public class SolicitudProcesoMongoDAO {
             solicitud.setProcesoId(doc.getString("proceso_id"));
             solicitud.setEstado(doc.getString("estado"));
             solicitud.setTecnicoAsignadoId(doc.getString("tecnico_asignado_id"));
+            if (doc.getDate("fecha_solicitud") != null) {
+                solicitud.setFechaSolicitud(doc.getDate("fecha_solicitud").toInstant()
+                        .atZone(ZoneId.systemDefault()).toLocalDateTime());
+            }
+            org.bson.Document paramsDoc = doc.get("parametros", org.bson.Document.class);
+            if (paramsDoc != null) {
+                solicitud.setParametros(paramsDoc);
+            }
             if (doc.containsKey("resultado")) {
                 solicitud.setResultado(doc.getString("resultado"));
             }

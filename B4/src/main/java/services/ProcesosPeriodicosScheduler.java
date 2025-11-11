@@ -24,6 +24,7 @@ public class ProcesosPeriodicosScheduler {
 
     private final ScheduledExecutorService executor;
     private volatile boolean iniciado;
+    private final Object cicloLock = new Object();
 
     private ProcesosPeriodicosScheduler() {
         this.executor = Executors.newScheduledThreadPool(1, new DaemonThreadFactory());
@@ -49,15 +50,25 @@ public class ProcesosPeriodicosScheduler {
         iniciado = true;
     }
 
+    public void ejecutarCicloInmediato() {
+        iniciar();
+        ejecutarPendientes();
+    }
+
     private void ejecutarPendientes() {
-        try {
-            List<ConsultaPeriodica> consultas = ConsultasPeriodicasService.getInstance()
-                    .listarPendientes(LocalDateTime.now());
-            for (ConsultaPeriodica consulta : consultas) {
-                ejecutarConsulta(consulta);
+        synchronized (cicloLock) {
+            try {
+                List<ConsultaPeriodica> consultas = ConsultasPeriodicasService.getInstance()
+                        .listarPendientes(LocalDateTime.now());
+                if (consultas.isEmpty()) {
+                    return;
+                }
+                for (ConsultaPeriodica consulta : consultas) {
+                    ejecutarConsulta(consulta);
+                }
+            } catch (Exception e) {
+                System.err.println("Error al listar consultas periódicas: " + e.getMessage());
             }
-        } catch (Exception e) {
-            System.err.println("Error al listar consultas periódicas: " + e.getMessage());
         }
     }
 

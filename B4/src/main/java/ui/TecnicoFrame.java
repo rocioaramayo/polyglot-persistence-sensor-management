@@ -4,6 +4,7 @@ import exceptions.ErrorConexionCassandraException;
 import exceptions.ErrorConexionMongoException;
 import exceptions.ErrorConexionMySQLException;
 import exceptions.ErrorConexionRedisException;
+import modelo.ConsultaPeriodica;
 import modelo.MantenimientoTask;
 import modelo.Proceso;
 import modelo.SolicitudProceso;
@@ -46,6 +47,8 @@ public class TecnicoFrame extends JFrame {
     private JTable tareasDisponiblesTable;
     private DefaultTableModel misTareasModel;
     private JTable misTareasTable;
+    private DefaultTableModel periodicosModel;
+    private JTable periodicosTable;
 
     public TecnicoFrame(String token) {
         this.token = token;
@@ -68,6 +71,7 @@ public class TecnicoFrame extends JFrame {
         refrescarAsignadas();
         refrescarTareasDisponibles();
         refrescarMisTareas();
+        refrescarProcesosPeriodicos();
     }
 
     private boolean cargarUsuarioActual() {
@@ -117,6 +121,7 @@ public class TecnicoFrame extends JFrame {
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Solicitudes", crearTabSolicitudes());
         tabs.addTab("Mantenimiento de sensores", crearTabSensores());
+        tabs.addTab("Procesos periódicos", crearTabProcesosPeriodicos());
         return tabs;
     }
 
@@ -132,6 +137,37 @@ public class TecnicoFrame extends JFrame {
         split.setBorder(null);
 
         panel.add(split, BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearTabProcesosPeriodicos() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        periodicosModel = new DefaultTableModel(
+                new Object[]{"ID", "Nombre", "Usuario", "Estado", "Última ejecución", "Próxima ejecución", "Periodicidad"},
+                0
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        periodicosTable = new JTable(periodicosModel);
+        periodicosTable.setFillsViewportHeight(true);
+        periodicosTable.setAutoCreateRowSorter(true);
+
+        JPanel tablaWrapper = new JPanel(new BorderLayout());
+        tablaWrapper.setBorder(BorderFactory.createTitledBorder("Programaciones aprobadas"));
+        tablaWrapper.add(new JScrollPane(periodicosTable), BorderLayout.CENTER);
+
+        JButton refrescarBtn = new JButton("Refrescar lista periódica");
+        refrescarBtn.addActionListener(e -> refrescarProcesosPeriodicos());
+        JPanel acciones = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        acciones.add(refrescarBtn);
+
+        panel.add(tablaWrapper, BorderLayout.CENTER);
+        panel.add(acciones, BorderLayout.SOUTH);
         return panel;
     }
 
@@ -570,6 +606,33 @@ public class TecnicoFrame extends JFrame {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Aviso", JOptionPane.WARNING_MESSAGE);
         } catch (ErrorConexionMongoException ex) {
             JOptionPane.showMessageDialog(this, "No se pudo agendar la solicitud: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void refrescarProcesosPeriodicos() {
+        if (periodicosModel == null || usuarioActual == null) {
+            return;
+        }
+        try {
+            List<ConsultaPeriodica> consultas = ConsultasPeriodicasService.getInstance()
+                    .listarPorTecnico(usuarioActual.getId());
+            periodicosModel.setRowCount(0);
+            for (ConsultaPeriodica c : consultas) {
+                periodicosModel.addRow(new Object[]{
+                        c.getId(),
+                        c.getNombre() != null ? c.getNombre() : "-",
+                        obtenerNombreUsuario(c.getUsuarioId()),
+                        c.isActivo() ? "ACTIVA" : "INACTIVA",
+                        c.getUltimaEjecucion() != null ? FECHA_FORMATO.format(c.getUltimaEjecucion()) : "-",
+                        c.getProximaEjecucion() != null ? FECHA_FORMATO.format(c.getProximaEjecucion()) : "-",
+                        c.getPeriodicidad() != null ? c.getPeriodicidad() : "-"
+                });
+            }
+        } catch (ErrorConexionMongoException e) {
+            JOptionPane.showMessageDialog(this,
+                    "No se pudieron cargar los procesos periódicos: " + e.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
 
