@@ -19,10 +19,10 @@ public class FacturaMySQLRepository {
         return instance;
     }
 
-    public void crear(Factura factura) throws ErrorConexionMySQLException {
+    // Transaccional: usa conexión provista
+    public void crear(Connection conn, Factura factura) throws SQLException {
         String sql = "INSERT INTO facturas (usuario_id, solicitud_id, fecha_emision, monto, estado, descripcion, nombre_facturacion, apellido_facturacion, direccion_facturacion, telefono_facturacion, numero_factura) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = MySQLPool.getInstance().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, factura.getUsuarioId());
             stmt.setString(2, factura.getSolicitudId());
             stmt.setTimestamp(3, Timestamp.valueOf(factura.getFechaEmision()));
@@ -33,9 +33,15 @@ public class FacturaMySQLRepository {
             stmt.setString(8, factura.getApellidoFacturacion());
             stmt.setString(9, factura.getDireccionFacturacion());
             stmt.setString(10, factura.getTelefonoFacturacion());
-            // numero_factura simple: F-<epochMillis>
             stmt.setString(11, "F-" + System.currentTimeMillis());
             stmt.executeUpdate();
+        }
+    }
+
+    // No transaccional: mantiene compatibilidad
+    public void crear(Factura factura) throws ErrorConexionMySQLException {
+        try (Connection conn = MySQLPool.getInstance().getConnection()) {
+            crear(conn, factura);
         } catch (SQLException e) {
             throw new ErrorConexionMySQLException("Error al crear factura", e);
         }
@@ -43,6 +49,20 @@ public class FacturaMySQLRepository {
 
     public void guardar(Factura factura) throws ErrorConexionMySQLException {
         crear(factura);
+    }
+
+    // Transaccional: obtener por id
+    public Factura obtenerPorId(Connection conn, Integer facturaId) throws SQLException {
+        String sql = "SELECT * FROM facturas WHERE id = ?";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, facturaId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapearFactura(rs);
+                }
+            }
+        }
+        return null;
     }
 
     public List<Factura> obtenerPorUsuario(String usuarioId) throws ErrorConexionMySQLException {
@@ -78,27 +98,26 @@ public class FacturaMySQLRepository {
     }
 
     public Factura obtenerPorId(Integer facturaId) throws ErrorConexionMySQLException {
-        String sql = "SELECT * FROM facturas WHERE id = ?";
-        try (Connection conn = MySQLPool.getInstance().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, facturaId);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                return mapearFactura(rs);
-            }
+        try (Connection conn = MySQLPool.getInstance().getConnection()) {
+            return obtenerPorId(conn, facturaId);
         } catch (SQLException e) {
             throw new ErrorConexionMySQLException("Error al obtener factura", e);
         }
-        return null;
     }
 
-    public void actualizarEstado(Integer facturaId, String nuevoEstado) throws ErrorConexionMySQLException {
+    // Transaccional: actualizar estado
+    public void actualizarEstado(Connection conn, Integer facturaId, String nuevoEstado) throws SQLException {
         String sql = "UPDATE facturas SET estado = ? WHERE id = ?";
-        try (Connection conn = MySQLPool.getInstance().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, nuevoEstado);
             stmt.setInt(2, facturaId);
             stmt.executeUpdate();
+        }
+    }
+
+    public void actualizarEstado(Integer facturaId, String nuevoEstado) throws ErrorConexionMySQLException {
+        try (Connection conn = MySQLPool.getInstance().getConnection()) {
+            actualizarEstado(conn, facturaId, nuevoEstado);
         } catch (SQLException e) {
             throw new ErrorConexionMySQLException("Error al actualizar estado de la factura", e);
         }

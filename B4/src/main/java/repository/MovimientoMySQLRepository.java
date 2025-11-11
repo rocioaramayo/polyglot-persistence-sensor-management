@@ -19,11 +19,10 @@ public class MovimientoMySQLRepository {
         return instance;
     }
 
-    public void crear(Movimiento movimiento) throws ErrorConexionMySQLException {
-        String sql = "INSERT INTO movimientos (cuenta_id, tipo, monto, saldo_anterior, saldo_nuevo, fecha, descripcion, referencia_id) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = MySQLPool.getInstance().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+    // Transaccional: usa conexión provista
+    public void crear(Connection conn, Movimiento movimiento) throws SQLException {
+        String sql = "INSERT INTO movimientos (cuenta_id, tipo, monto, saldo_anterior, saldo_nuevo, fecha, descripcion, referencia_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, movimiento.getCuentaId());
             stmt.setString(2, movimiento.getTipo());
             stmt.setDouble(3, movimiento.getMonto());
@@ -36,6 +35,12 @@ public class MovimientoMySQLRepository {
             stmt.setString(7, movimiento.getDescripcion());
             stmt.setString(8, movimiento.getReferenciaId());
             stmt.executeUpdate();
+        }
+    }
+
+    public void crear(Movimiento movimiento) throws ErrorConexionMySQLException {
+        try (Connection conn = MySQLPool.getInstance().getConnection()) {
+            crear(conn, movimiento);
         } catch (SQLException e) {
             throw new ErrorConexionMySQLException("Error al crear movimiento", e);
         }

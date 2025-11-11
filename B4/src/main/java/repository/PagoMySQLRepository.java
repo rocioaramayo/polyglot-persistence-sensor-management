@@ -20,13 +20,10 @@ public class PagoMySQLRepository {
         return instance;
     }
 
-    public void insertar(Pago pago) throws SQLException, ErrorConexionMySQLException {
-        String sql = "INSERT INTO pagos (factura_id, usuario_id, monto, fecha_pago, metodo_pago, referencia, estado) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
-        
-        try (Connection conn = MySQLPool.getInstance().getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            
+    // Transaccional: usa conexión provista
+    public void insertar(Connection conn, Pago pago) throws SQLException {
+        String sql = "INSERT INTO pagos (factura_id, usuario_id, monto, fecha_pago, metodo_pago, referencia, estado) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setInt(1, pago.getFacturaId());
             stmt.setString(2, pago.getUsuarioId());
             stmt.setDouble(3, pago.getMonto());
@@ -34,14 +31,18 @@ public class PagoMySQLRepository {
             stmt.setString(5, pago.getMetodoPago());
             stmt.setString(6, pago.getReferencia());
             stmt.setString(7, pago.getEstado());
-            
             stmt.executeUpdate();
-            
             try (ResultSet rs = stmt.getGeneratedKeys()) {
                 if (rs.next()) {
                     pago.setId(rs.getInt(1));
                 }
             }
+        }
+    }
+
+    public void insertar(Pago pago) throws SQLException, ErrorConexionMySQLException {
+        try (Connection conn = MySQLPool.getInstance().getConnection()) {
+            insertar(conn, pago);
         }
     }
 
