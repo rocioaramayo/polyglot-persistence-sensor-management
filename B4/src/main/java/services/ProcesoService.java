@@ -26,12 +26,6 @@ public class ProcesoService {
                     220.0
             ),
             new ProcesoDefinicion(
-                    "Consultas en línea",
-                    "Servicios de consultas en línea sobre información de sensores por ciudad, zona o país dentro de un rango de fechas.",
-                    "CONSULTA_ONLINE",
-                    150.0
-            ),
-            new ProcesoDefinicion(
                     "Procesos periódicos programados",
                     "Procesos periódicos de consultas sobre humedad y temperaturas por ciudades, zonas y países de forma anualizada o mensualizada.",
                     "PROCESO_PERIODICO",
