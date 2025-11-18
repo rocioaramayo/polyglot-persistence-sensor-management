@@ -30,6 +30,12 @@ public class ProcesoService {
                     "Procesos periódicos de consultas sobre humedad y temperaturas por ciudades, zonas y países de forma anualizada o mensualizada.",
                     "PROCESO_PERIODICO",
                     200.0
+            ),
+            new ProcesoDefinicion(
+                    "Procesos para nuevo",
+                    "Procesos po mensualizada.",
+                    "PROCESO_PERIODICO",
+                    200.0
             )
     );
     private static final List<String> PROCESOS_OBSOLETOS = Collections.singletonList("Alertas de condiciones críticas");

@@ -29,6 +29,7 @@ public class ProcesoEjecucionService {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATE_TIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final int LIMITE_MEDICIONES = 1000;
+    private static final String PROCESO_NUEVO_NOMBRE = "Procesos para nuevo";
 
     private static ProcesoEjecucionService instance;
 
@@ -103,7 +104,7 @@ public class ProcesoEjecucionService {
         String periodoTexto = construirPeriodoTexto(fechaInicio, fechaFin, totalMediciones);
         String resultado = construirDetalle(proceso, metricasPorSensor, periodoTexto,
                 globalTempMin, globalTempMax, globalTempProm,
-                globalHumMin, globalHumMax, globalHumProm);
+                globalHumMin, globalHumMax, globalHumProm, globalTempSum);
 
         String observaciones = construirObservaciones(proceso, sensores.size(), totalMediciones, params, metricasPorSensor);
         return new ProcesoResultado(resultado, observaciones);
@@ -185,7 +186,8 @@ public class ProcesoEjecucionService {
                                     double globalTempProm,
                                     double globalHumMin,
                                     double globalHumMax,
-                                    double globalHumProm) {
+                                    double globalHumProm,
+                                    double globalTempSum) {
         StringBuilder sb = new StringBuilder();
         sb.append("Proceso: ").append(proceso.getNombre()).append("\n");
         if (proceso.getDescripcion() != null) {
@@ -202,6 +204,10 @@ public class ProcesoEjecucionService {
         sb.append("Humedad -> min: ").append(formatear(globalHumMin))
                 .append(" % | max: ").append(formatear(globalHumMax))
                 .append(" % | promedio: ").append(formatear(globalHumProm)).append(" %\n");
+
+        if (esProcesoSumatoria(proceso)) {
+            sb.append("Sumatoria de temperaturas: ").append(formatear(globalTempSum)).append(" °C\n");
+        }
 
         sb.append("\nDetalle por sensor:\n");
         for (SensorMetricas metrica : metricas) {
@@ -313,6 +319,10 @@ public class ProcesoEjecucionService {
             return "-";
         }
         return String.format(Locale.US, "%.2f", valor);
+    }
+
+    private boolean esProcesoSumatoria(Proceso proceso) {
+        return proceso != null && PROCESO_NUEVO_NOMBRE.equalsIgnoreCase(proceso.getNombre());
     }
 
     private String construirPeriodoTexto(LocalDateTime inicio, LocalDateTime fin, long totalMediciones) {

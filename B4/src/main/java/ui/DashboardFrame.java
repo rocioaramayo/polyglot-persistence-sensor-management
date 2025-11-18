@@ -38,8 +38,9 @@ public class DashboardFrame extends JFrame {
     private final Map<String, String> usuariosCache = new HashMap<>();
     private final Map<String, String> gruposCache = new HashMap<>();
     private static final DateTimeFormatter MENSAJE_FORMATO = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-    private final Map<String, Proceso> procesoCache = new HashMap<>();
-    private List<Proceso> procesosDisponibles = new ArrayList<>();
+private final Map<String, Proceso> procesoCache = new HashMap<>();
+private List<Proceso> procesosDisponibles = new ArrayList<>();
+private static final String PROCESO_NUEVO_NOMBRE = "Procesos para nuevo";
 
     private JComboBox<ProcesoItem> procesosCombo;
     private JTextArea detalleProcesoArea;
@@ -198,7 +199,7 @@ public class DashboardFrame extends JFrame {
             for (Proceso proceso : procesosDisponibles) {
                 String costo = proceso.getCosto() != null ? String.format("$ %.2f", proceso.getCosto()) : "-";
                 model.addRow(new Object[]{
-                        proceso.getNombre(),
+                        obtenerNombreVisible(proceso),
                         proceso.getTipo(),
                         costo,
                         proceso.getDescripcion()
@@ -207,6 +208,11 @@ public class DashboardFrame extends JFrame {
         } else {
             model.addRow(new Object[]{"-", "-", "-", "No hay procesos disponibles en este momento"});
         }
+
+        JLabel nota = new JLabel("<html><i>'Procesos para nuevo' se muestra como ejemplo de catálogo, sin pasos de ejecución implementados.</i></html>");
+        nota.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        nota.setFont(nota.getFont().deriveFont(Font.ITALIC, 12f));
+        panel.add(nota, BorderLayout.SOUTH);
 
         panel.add(new JScrollPane(tabla), BorderLayout.CENTER);
 
@@ -725,8 +731,22 @@ public class DashboardFrame extends JFrame {
 
         @Override
         public String toString() {
-            return nombre != null && !nombre.isBlank() ? nombre : "Selecciona un proceso";
+            String label = nombre != null && !nombre.isBlank() ? nombre : "Selecciona un proceso";
+            if (PROCESO_NUEVO_NOMBRE.equalsIgnoreCase(nombre)) {
+                label += " (sin función)";
+            }
+            return label;
         }
+    }
+
+    private String obtenerNombreVisible(Proceso proceso) {
+        if (proceso == null || proceso.getNombre() == null || proceso.getNombre().isBlank()) {
+            return "-";
+        }
+        if (PROCESO_NUEVO_NOMBRE.equalsIgnoreCase(proceso.getNombre())) {
+            return proceso.getNombre() + " (sin función)";
+        }
+        return proceso.getNombre();
     }
 
     private JPanel crearPanelCuenta() {
