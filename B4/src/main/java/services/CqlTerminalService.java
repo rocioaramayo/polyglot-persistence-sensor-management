@@ -41,7 +41,7 @@ public class CqlTerminalService {
         this.host = config.getProperty("cassandra.host", "127.0.0.1");
         this.port = config.getProperty("cassandra.port", "9042");
         this.user = config.getProperty("cassandra.readonly.user", "terminal_ro");
-        this.password = config.getProperty("cassandra.readonly.password", "terminal_ro_pass");
+        this.password = config.getProperty("cassandra.readonly.password", "");
         this.defaultKeyspace = config.getProperty("cassandra.default.keyspace",
                 config.getProperty("cassandra.keyspace", null));
         long timeout;

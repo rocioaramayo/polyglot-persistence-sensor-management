@@ -19,7 +19,7 @@ public class MySQLPool {
             String port = config.getProperty("mysql.port", "3306");
             String database = config.getProperty("mysql.database", "polyglot_db");
             this.user = config.getProperty("mysql.user", "root");
-            this.password = config.getProperty("mysql.password", "admin");
+            this.password = config.getProperty("mysql.password", "");
 
             this.url = "jdbc:mysql://" + host + ":" + port + "/" + database 
                     + "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
